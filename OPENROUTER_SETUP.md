@@ -21,17 +21,24 @@
 ```json
 "ai": {
   "provider": "openai",
-  "model": "google/gemini-2.5-flash-lite",
+  "model": "${HORIZON_AI_MODEL}",
   "base_url": "https://openrouter.ai/api/v1",
   "api_key_env": "OPENROUTER_API_KEY",
   "languages": ["zh", "en"]
 }
 ```
 
-OpenRouter 是 OpenAI 兼容网关，因此 `provider` 用 `openai`；密钥放在 `.env` 的
-`OPENROUTER_API_KEY`（Horizon 的 `api_key_env` 只能是环境变量名，不能直接写密钥值）。
+OpenRouter 是 OpenAI 兼容网关，因此 `provider` 用 `openai`。密钥与模型都放在 `.env`：
 
-想换模型只需改 `model` 字段，例如：
+```
+OPENROUTER_API_KEY=sk-or-v1-...
+HORIZON_AI_MODEL=google/gemini-2.5-flash-lite
+```
+
+`config.json` 里任何字符串都支持 `${VAR}` 引用环境变量；`main.py` 启动时会自动加载仓库根目录的 `.env`。
+（Horizon 的 `api_key_env` 只能是环境变量名，不能直接写密钥值。）
+
+想换模型只需改 `.env` 的 `HORIZON_AI_MODEL`（无需改 JSON），例如：
 
 | 模型 | 说明 |
 | --- | --- |
@@ -67,9 +74,11 @@ cd ~/horizon
    git push -u origin main
    ```
 
-2. **配置仓库 Secret**：仓库 → Settings → Secrets and variables → Actions → New repository secret
-   - `OPENROUTER_API_KEY` = 你的 OpenRouter API key（https://openrouter.ai/keys）
-   - 可选：`HORIZON_WEBHOOK_URL`（飞书/钉钉/Slack 通知）、`LWN_KEY`
+2. **配置仓库 Secret / Variable**：仓库 → Settings → Secrets and variables → Actions
+   - Secret `OPENROUTER_API_KEY` = 你的 OpenRouter API key（https://openrouter.ai/keys）
+   - Variable（可选）`HORIZON_AI_MODEL` = 模型 id；不设置则工作流回退到默认
+     `google/gemini-2.5-flash-lite`
+   - 可选：Secret `HORIZON_WEBHOOK_URL`（飞书/钉钉/Slack 通知）、`LWN_KEY`
 
 3. **开启 GitHub Pages**：仓库 → Settings → Pages → Build and deployment → Source 选
    **Deploy from a branch** → 分支选 `gh-pages` / 根目录。之后首次运行工作流即可访问站点。
@@ -79,7 +88,7 @@ cd ~/horizon
 ### 说明
 
 - 工作流会先执行 `cp data/config.github.json data/config.json`，因此 **CI 用的是 `data/config.github.json`**。
-  若要调整 CI 行为（例如换模型），改这个文件。
+  该文件的模型同样写作 `${HORIZON_AI_MODEL}`，由工作流的 `env` 注入（默认回退 `google/gemini-2.5-flash-lite`）。
 - 仓库自带的 `deploy-docs.yml` 只在 push 到 `main` 且改动 `docs/**` 时触发，与本工作流不冲突（都发布到 `gh-pages`）。
 - `data/config.json`、`.env` 已在 `.gitignore` 中，不会被提交。
 
@@ -87,5 +96,5 @@ cd ~/horizon
 
 - `data/config.json`：本地运行配置（AI 使用 OpenRouter）
 - `data/config.github.json`：CI 运行配置
-- `.env`：本地密钥（`OPENROUTER_API_KEY=...`）
+- `.env`：本地密钥与模型（`OPENROUTER_API_KEY=...`、`HORIZON_AI_MODEL=...`）
 - `.github/workflows/daily-summary.yml`：定时自动化工作流
