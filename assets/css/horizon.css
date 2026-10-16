@@ -1,0 +1,124 @@
+/* ==========================================================================
+   Horizon 每日速递 · 博客主题补充样式
+   --------------------------------------------------------------------------
+   基础外观全部来自博客主题：
+     /css/site.css      主题变量、导航、卡片、页脚
+     /css/article.css   正文排版（.post-detail / .post-meta / .post-tags / 代码块）
+   本文件只补充博客主题没有覆盖的部分：评分徽章、折叠引用、来源行、
+   中英切换按钮、RSS 图标。配色一律使用 blog 的 CSS 变量，保持素色一致。
+   ========================================================================== */
+
+/* ===== 评分徽章（由 assets/js/horizon.js 把「⭐️ N/10」替换而来）=====
+   单色阶：分数越高越深，避免引入与博客冲突的彩色。 */
+.score-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 0.72em;
+  font-weight: 700;
+  line-height: 1.5;
+  color: #fff;
+  background: var(--fg-muted);
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.score-badge[data-tier="high"] { background: var(--fg); }
+.score-badge[data-tier="good"] { background: var(--accent); }
+.score-badge[data-tier="mid"]  { background: #9aa1aa; }
+.score-badge[data-tier="low"]  { background: var(--border); color: var(--fg-muted); }
+
+/* ===== 来源行（由 horizon.js 标记）===== */
+.main-content p.source-line {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--fg-muted);
+  margin-top: -4px;
+}
+
+/* ===== 条目之间的分隔线（正文里的 --- ）===== */
+.post-detail hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 28px 0;
+}
+
+/* 每条正文前会有一个只含锚点的空段落（<p><a id="item-1"></a></p>），
+   隐藏它，避免标题上方多出一段空白。老浏览器不支持 :has 时保持原样。 */
+.post-detail p:has(> a:not([href]):only-child) { display: none; }
+
+/* ===== 折叠的「参考链接」 ===== */
+.post-detail details {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  margin: 14px 0 18px;
+}
+
+.post-detail details summary {
+  cursor: pointer;
+  padding: 7px 12px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--fg-muted);
+}
+
+.post-detail details summary:hover { color: var(--fg); }
+
+.post-detail details > ul {
+  margin: 0;
+  padding: 2px 12px 10px 30px;
+  font-size: 13.5px;
+}
+
+.post-detail details > ul li { margin-bottom: 4px; }
+
+/* ===== 首页的中英切换（由 horizon.js 插入到 body 顶部，固定导航下方）===== */
+.lang-toggle {
+  position: fixed;
+  top: 72px;
+  right: 16px;
+  z-index: 90;
+  display: flex;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .06);
+}
+
+.lang-toggle button {
+  padding: 5px 13px;
+  border: 0;
+  background: transparent;
+  color: var(--fg-muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background .2s, color .2s;
+}
+
+.lang-toggle button + button { border-left: 1px solid var(--border); }
+.lang-toggle button:hover { color: var(--fg); }
+.lang-toggle button.active { background: var(--accent); color: #fff; }
+
+.lang-section.hidden { display: none; }
+
+/* ===== 首页标题旁的 RSS 图标 ===== */
+.rss-icon {
+  opacity: .6;
+  color: inherit;
+  margin-left: 12px;
+  vertical-align: middle;
+  text-decoration: none;
+  transition: opacity .2s;
+}
+
+.rss-icon:hover { opacity: 1; color: var(--fg); }
+.rss-icon svg { width: .9em; height: .9em; display: inline-block; }
+
+/* ===== 响应式 ===== */
+@media (max-width: 720px) {
+  .lang-toggle { top: 68px; right: 12px; }
+}
