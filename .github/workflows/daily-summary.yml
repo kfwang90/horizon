@@ -32,6 +32,19 @@ jobs:
       - name: Prepare GitHub Actions config
         run: cp data/config.github.json data/config.json
 
+      # Only export HORIZON_WEBHOOK_URL when the secret actually has a value.
+      # Setting it to "" makes Horizon abort with:
+      #   ValueError: Webhook URL is empty (env var ... is set but empty)
+      - name: Export webhook URL (only if configured)
+        env:
+          WEBHOOK_URL: ${{ secrets.HORIZON_WEBHOOK_URL }}
+        run: |
+          if [ -n "$WEBHOOK_URL" ]; then
+            echo "HORIZON_WEBHOOK_URL=$WEBHOOK_URL" >> "$GITHUB_ENV"
+          else
+            echo "HORIZON_WEBHOOK_URL not configured; webhook notifications will be skipped."
+          fi
+
       - name: Run Horizon
         env:
           # data/config.github.json uses ai.api_key_env = OPENROUTER_API_KEY
@@ -44,7 +57,8 @@ jobs:
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           LWN_KEY: ${{ secrets.LWN_KEY }}
-          HORIZON_WEBHOOK_URL: ${{ secrets.HORIZON_WEBHOOK_URL }}
+          # NOTE: HORIZON_WEBHOOK_URL is exported by the step above, only when
+          # the secret is non-empty (an empty value would abort the run).
           # Optional: raise GitHub API rate limits used by the github source
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: uv run horizon --hours 24
