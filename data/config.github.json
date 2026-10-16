@@ -16,8 +16,20 @@
   },
   "processing": {
     "profiles_dir": "profiles",
-    "default_profile": "tech-news",
+    "default_profile": "ai-news",
     "profile_settings": {
+      "gh-trending": {
+        "threshold": 5.0,
+        "topic_dedup": true
+      },
+      "ai-news": {
+        "threshold": 6.5,
+        "topic_dedup": true
+      },
+      "social-hot": {
+        "threshold": 6.0,
+        "topic_dedup": false
+      },
       "tech-news": {
         "threshold": 7.0,
         "topic_dedup": true
@@ -35,128 +47,202 @@
   "sources": {
     "github": [
       {
-        "type": "user_events",
-        "username": "karpathy",
+        "type": "trending",
+        "since": "daily",
+        "languages": [
+          "all"
+        ],
+        "max_items": 20,
         "enabled": true,
-        "profile": "tech-news"
+        "category": "gh-trending",
+        "profile": "gh-trending"
       },
       {
         "type": "repo_releases",
         "owner": "vllm-project",
         "repo": "vllm",
         "enabled": true,
-        "profile": "tech-news"
-      },
-      {
-        "type": "repo_releases",
-        "owner": "sgl-project",
-        "repo": "sglang",
-        "enabled": true,
-        "profile": "tech-news"
-      },
-      {
-        "type": "repo_releases",
-        "owner": "triton-lang",
-        "repo": "triton",
-        "enabled": true,
-        "profile": "tech-news"
+        "category": "ai-news",
+        "profile": "ai-news"
       }
     ],
     "hackernews": {
       "enabled": true,
-      "fetch_top_stories": 30,
+      "fetch_top_stories": 20,
       "min_score": 150,
-      "profile": "tech-news"
+      "category": "ai-news",
+      "profile": "ai-news"
     },
     "rss": [
+      {
+        "name": "TechCrunch AI",
+        "url": "https://techcrunch.com/category/artificial-intelligence/feed/",
+        "enabled": true,
+        "category": "ai-news",
+        "profile": "ai-news"
+      },
+      {
+        "name": "The Verge AI",
+        "url": "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml",
+        "enabled": true,
+        "category": "ai-news",
+        "profile": "ai-news"
+      },
+      {
+        "name": "MIT Technology Review AI",
+        "url": "https://www.technologyreview.com/topic/artificial-intelligence/feed/",
+        "enabled": true,
+        "category": "ai-news",
+        "profile": "ai-news"
+      },
+      {
+        "name": "The Decoder",
+        "url": "https://the-decoder.com/feed/",
+        "enabled": true,
+        "category": "ai-news",
+        "profile": "ai-news"
+      },
+      {
+        "name": "MarkTechPost",
+        "url": "https://www.marktechpost.com/feed/",
+        "enabled": true,
+        "category": "ai-news",
+        "profile": "ai-news"
+      },
+      {
+        "name": "Hugging Face Blog",
+        "url": "https://huggingface.co/blog/feed.xml",
+        "enabled": true,
+        "category": "ai-news",
+        "profile": "ai-news"
+      },
+      {
+        "name": "OpenAI News",
+        "url": "https://openai.com/news/rss.xml",
+        "enabled": true,
+        "category": "ai-news",
+        "profile": "ai-news"
+      },
+      {
+        "name": "Google DeepMind Blog",
+        "url": "https://deepmind.google/blog/rss.xml",
+        "enabled": true,
+        "category": "ai-news",
+        "profile": "ai-news"
+      },
+      {
+        "name": "Google AI Blog",
+        "url": "https://blog.google/technology/ai/rss/",
+        "enabled": true,
+        "category": "ai-news",
+        "profile": "ai-news"
+      },
       {
         "name": "Simon Willison",
         "url": "https://simonwillison.net/atom/everything/",
         "enabled": true,
-        "category": "ai-tools",
-        "profile": "tech-news"
+        "category": "ai-news",
+        "profile": "ai-news"
       },
       {
-        "name": "vLLM Blog",
-        "url": "https://vllm.ai/blog/rss.xml",
+        "name": "量子位",
+        "url": "https://www.qbitai.com/feed",
         "enabled": true,
-        "category": "llm-inference",
-        "profile": "tech-blog",
-        "content_extractor": "trafilatura"
-      },
-      {
-        "name": "Sean Goedecke",
-        "url": "https://www.seangoedecke.com/rss.xml",
-        "enabled": true,
-        "category": "software-engineering",
-        "profile": "tech-blog",
-        "content_extractor": "trafilatura"
-      },
-      {
-        "name": "CNBC Finance",
-        "url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10000664",
-        "enabled": true,
-        "category": "finance",
-        "profile": "finance-news",
-        "content_extractor": "trafilatura"
-      },
-      {
-        "name": "GitHub Trending - Daily",
-        "url": "https://mshibanami.github.io/GitHubTrendingRSS/daily/all.xml",
-        "enabled": true,
-        "category": "github-trending",
-        "profile": "tech-news"
-      },
-      {
-        "name": "Semianalysis",
-        "url": "https://newsletter.semianalysis.com/feed",
-        "enabled": true,
-        "category": "semiconductors",
-        "profile": "tech-news"
-      },
-      {
-        "name": "LWN.net",
-        "url": "https://lwn.net/headlines/full_text?key=${LWN_KEY}",
-        "enabled": true,
-        "category": "linux-kernel",
-        "profile": "tech-news"
+        "category": "ai-news",
+        "profile": "ai-news"
       }
     ],
     "reddit": {
       "enabled": true,
       "subreddits": [
         {
-          "subreddit": "MachineLearning",
-          "enabled": true,
-          "sort": "hot",
-          "time_filter": "day",
-          "fetch_limit": 10,
-          "min_score": 60,
-          "profile": "tech-news"
-        },
-        {
           "subreddit": "LocalLLaMA",
           "enabled": true,
           "sort": "hot",
           "time_filter": "day",
           "fetch_limit": 10,
-          "min_score": 60,
-          "profile": "tech-news"
+          "min_score": 100,
+          "category": "ai-news",
+          "profile": "ai-news"
         }
       ],
       "users": [],
-      "fetch_comments": 10
+      "fetch_comments": 5
     },
-    "telegram": {
+    "twitter": {
       "enabled": true,
+      "mode": "apify",
+      "actor_id": "altimis~scweet",
+      "apify_token_env": "APIFY_TOKEN",
+      "users": [
+        "karpathy",
+        "sama",
+        "AnthropicAI",
+        "GoogleDeepMind",
+        "OpenAI",
+        "ylecun",
+        "DrJimFan",
+        "huggingface"
+      ],
+      "keywords": [],
+      "fetch_limit": 100,
+      "per_profile_limit": 3,
+      "fetch_reply_text": false,
+      "max_replies_per_tweet": 3,
+      "max_tweets_to_expand": 0,
+      "reply_min_likes": 10,
+      "category": "social-hot",
+      "profile": "social-hot"
+    },
+    "youtube": {
+      "enabled": true,
+      "fetch_limit": 3,
+      "min_views": 0,
+      "max_items": 12,
+      "category": "social-hot",
+      "profile": "social-hot",
       "channels": [
         {
-          "channel": "zaihuapd",
-          "enabled": true,
-          "fetch_limit": 20,
-          "profile": ["tech-news", "finance-news"]
+          "channel": "@TwoMinutePapers",
+          "enabled": true
+        },
+        {
+          "channel": "@mreflow",
+          "enabled": true
+        },
+        {
+          "channel": "@samwitteveenai",
+          "enabled": true
+        },
+        {
+          "channel": "@matthew_berman",
+          "enabled": true
+        },
+        {
+          "channel": "@aiexplained-official",
+          "enabled": true
+        },
+        {
+          "channel": "@bycloudAI",
+          "enabled": true
         }
       ]
+    },
+    "telegram": {
+      "enabled": false,
+      "channels": []
+    },
+    "ossinsight": {
+      "enabled": false
+    },
+    "gdelt": {
+      "enabled": false
+    },
+    "google_news": {
+      "enabled": false
+    },
+    "openbb": {
+      "enabled": false
     }
   },
   "collection": {
@@ -165,13 +251,35 @@
   "digest": {
     "max_items": null,
     "profile_order": [
-      "tech-news",
-      "tech-blog",
-      "finance-news"
+      "gh-trending",
+      "ai-news",
+      "social-hot"
     ],
-    "category_groups": {},
+    "category_groups": {
+      "gh-trending": {
+        "name": "GitHub 热点项目",
+        "limit": 8,
+        "categories": [
+          "gh-trending"
+        ]
+      },
+      "ai-news": {
+        "name": "AI 热门新闻",
+        "limit": 8,
+        "categories": [
+          "ai-news"
+        ]
+      },
+      "social-hot": {
+        "name": "X / YouTube 热门",
+        "limit": 8,
+        "categories": [
+          "social-hot"
+        ]
+      }
+    },
     "default_group": "other",
-    "default_group_limit": null
+    "default_group_limit": 8
   },
   "webhook": {
     "enabled": true,

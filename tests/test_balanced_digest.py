@@ -203,7 +203,10 @@ def test_appends_profiles_missing_from_configured_order() -> None:
         "tech-news",
         "tech-blog",
         "ai-creator",
+        "ai-news",
         "finance-news",
+        "gh-trending",
+        "social-hot",
     ]
 
 

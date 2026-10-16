@@ -2,14 +2,26 @@
 
 import logging
 import os
-from datetime import datetime
+import re
+from datetime import datetime, timezone
 from typing import List, Optional
+
 import httpx
+from bs4 import BeautifulSoup
 
 from .base import BaseScraper
 from ..models import ContentItem, SourceType, GitHubSourceConfig
 
 logger = logging.getLogger(__name__)
+
+TRENDING_BASE_URL = "https://github.com/trending"
+BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml",
+}
 
 
 class GitHubScraper(BaseScraper):
@@ -62,8 +74,147 @@ class GitHubScraper(BaseScraper):
             elif source.type == "repo_releases" and source.owner and source.repo:
                 release_items = await self._fetch_repo_releases(source, since)
                 items.extend(release_items)
+            elif source.type == "trending":
+                trending_items = await self._fetch_trending(source)
+                items.extend(trending_items)
 
         return items
+
+    async def _fetch_trending(self, source: GitHubSourceConfig) -> List[ContentItem]:
+        """Fetch the github.com/trending leaderboard.
+
+        Scrapes the public HTML page (no API, no token). One request per
+        configured language; an empty `languages` list means the all-language
+        page. There is no per-repository timestamp on that page, so items are
+        dated "now" and treated as part of the current run's window.
+        """
+        languages = source.languages or ["all"]
+        since = source.since if source.since in {"daily", "weekly", "monthly"} else "daily"
+
+        items: List[ContentItem] = []
+        seen: set[str] = set()
+
+        for language in languages:
+            rows = await self._fetch_trending_page(language, since)
+            for repo, meta in rows:
+                if repo in seen:
+                    continue
+                seen.add(repo)
+                items.append(
+                    ContentItem(
+                        id=self._generate_id("github", "trending", repo),
+                        source_type=SourceType.GITHUB,
+                        title=repo,
+                        url=f"https://github.com/{repo}",
+                        content=self._trending_content(repo, meta),
+                        author=repo.split("/")[0],
+                        published_at=datetime.now(timezone.utc),
+                        profile=source.profile,
+                        metadata={
+                            "repo": repo,
+                            "trending_language": language or "all",
+                            "trending_since": since,
+                            "language": meta.get("language", ""),
+                            "stars_today": meta.get("stars_today", 0),
+                            "stars_total": meta.get("stars_total", 0),
+                            "description": meta.get("description", ""),
+                            "category": source.category,
+                        },
+                    )
+                )
+
+        items.sort(key=lambda item: item.metadata.get("stars_today", 0), reverse=True)
+        if source.max_items:
+            items = items[: source.max_items]
+        return items
+
+    async def _fetch_trending_page(
+        self, language: str, since: str
+    ) -> List[tuple[str, dict]]:
+        """Fetch and parse one trending page. Returns (repo, metadata) pairs."""
+        url = TRENDING_BASE_URL
+        language = "" if language.strip().lower() in {"", "all", "any"} else language.strip().strip("/")
+        if language:
+            url = f"{url}/{language}"
+        url = f"{url}?since={since}"
+
+        try:
+            response = await self.client.get(
+                url, headers=BROWSER_HEADERS, follow_redirects=True
+            )
+            response.raise_for_status()
+        except httpx.HTTPError as e:
+            logger.warning("Error fetching GitHub trending (%s): %s", url, e)
+            return []
+
+        return self._parse_trending(response.text)
+
+    @staticmethod
+    def _parse_trending(html: str) -> List[tuple[str, dict]]:
+        """Parse trending repositories out of a GitHub trending page."""
+        soup = BeautifulSoup(html, "html.parser")
+        rows: List[tuple[str, dict]] = []
+
+        for article in soup.select("article.Box-row"):
+            link = article.select_one("h2 a")
+            if not link:
+                continue
+            repo = (link.get("href") or "").strip("/")
+            if not repo or "/" not in repo:
+                continue
+
+            description_el = article.select_one("p")
+            language_el = article.select_one('[itemprop="programmingLanguage"]')
+            stars_el = article.select_one('a[href$="/stargazers"]')
+
+            text = article.get_text(" ", strip=True)
+            today_match = re.search(r"([\d,]+)\s+stars?\s+today", text)
+
+            rows.append(
+                (
+                    repo,
+                    {
+                        "description": (
+                            description_el.get_text(" ", strip=True)
+                            if description_el
+                            else ""
+                        ),
+                        "language": (
+                            language_el.get_text(strip=True) if language_el else ""
+                        ),
+                        "stars_today": (
+                            int(today_match.group(1).replace(",", ""))
+                            if today_match
+                            else 0
+                        ),
+                        "stars_total": (
+                            GitHubScraper._to_int(stars_el.get_text(strip=True))
+                            if stars_el
+                            else 0
+                        ),
+                    },
+                )
+            )
+
+        return rows
+
+    @staticmethod
+    def _to_int(value: str) -> int:
+        digits = re.sub(r"[^\d]", "", value or "")
+        return int(digits) if digits else 0
+
+    @staticmethod
+    def _trending_content(repo: str, meta: dict) -> str:
+        lines = [f"Repository: {repo}"]
+        if meta.get("description"):
+            lines.append(f"Description: {meta['description']}")
+        if meta.get("language"):
+            lines.append(f"Primary language: {meta['language']}")
+        lines.append(
+            f"Stars gained today: {meta.get('stars_today', 0)} "
+            f"(total {meta.get('stars_total', 0)})"
+        )
+        return "\n".join(lines)
 
     async def _fetch_user_events(
         self,

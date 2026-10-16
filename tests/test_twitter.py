@@ -632,3 +632,135 @@ def test_fetch_replies_no_conversation_id_returns_empty(monkeypatch):
     assert result == []
 
 
+
+
+# ---------------------------------------------------------------------------
+# Scweet payload / permalink fixes
+# ---------------------------------------------------------------------------
+
+def test_profiles_payload_includes_per_profile_limit(monkeypatch):
+    monkeypatch.setenv("APIFY_TOKEN", "test_token")
+    since = datetime.now(timezone.utc) - timedelta(hours=1)
+    posted = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "/runs" in request.url.path and request.method == "POST":
+            posted["payload"] = json.loads(request.content)
+            return httpx.Response(200, json=_run_resp())
+        if "/actor-runs/" in request.url.path:
+            return httpx.Response(200, json=_status_resp())
+        if "/datasets/" in request.url.path:
+            return httpx.Response(200, json=[_tweet("1")])
+        raise AssertionError(f"Unexpected: {request.url}")
+
+    transport = httpx.MockTransport(handler)
+    client = httpx.AsyncClient(transport=transport)
+    asyncio.run(
+        TwitterScraper(
+            _make_config(users=["a", "b"], per_profile_limit=3), client
+        ).fetch(since)
+    )
+    asyncio.run(client.aclose())
+
+    assert posted["payload"]["source_mode"] == "profiles"
+    assert posted["payload"]["per_profile_limit"] == 3
+
+
+def test_profiles_payload_omits_limit_when_unset(monkeypatch):
+    monkeypatch.setenv("APIFY_TOKEN", "test_token")
+    since = datetime.now(timezone.utc) - timedelta(hours=1)
+    posted = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "/runs" in request.url.path and request.method == "POST":
+            posted["payload"] = json.loads(request.content)
+            return httpx.Response(200, json=_run_resp())
+        if "/actor-runs/" in request.url.path:
+            return httpx.Response(200, json=_status_resp())
+        if "/datasets/" in request.url.path:
+            return httpx.Response(200, json=[_tweet("1")])
+        raise AssertionError(f"Unexpected: {request.url}")
+
+    transport = httpx.MockTransport(handler)
+    client = httpx.AsyncClient(transport=transport)
+    asyncio.run(TwitterScraper(_make_config(), client).fetch(since))
+    asyncio.run(client.aclose())
+
+    assert "per_profile_limit" not in posted["payload"]
+
+
+def test_keyword_payload_bounds_window_and_sort(monkeypatch):
+    monkeypatch.setenv("APIFY_TOKEN", "test_token")
+    since = datetime.now(timezone.utc) - timedelta(days=1)
+    posted = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "/runs" in request.url.path and request.method == "POST":
+            posted["payload"] = json.loads(request.content)
+            return httpx.Response(200, json=_run_resp())
+        if "/actor-runs/" in request.url.path:
+            return httpx.Response(200, json=_status_resp())
+        if "/datasets/" in request.url.path:
+            return httpx.Response(200, json=[_tweet("k1", text="hot take")])
+        raise AssertionError(f"Unexpected: {request.url}")
+
+    transport = httpx.MockTransport(handler)
+    client = httpx.AsyncClient(transport=transport)
+    asyncio.run(
+        TwitterScraper(
+            _make_config(users=[], keywords=["AI"], search_sort="Top"), client
+        ).fetch(since)
+    )
+    asyncio.run(client.aclose())
+
+    payload = posted["payload"]
+    assert payload["search_sort"] == "Top"
+    assert payload["since"] == since.astimezone(timezone.utc).strftime("%Y-%m-%d")
+    assert payload["until"] == datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
+def test_uses_tweet_url_field_when_present(monkeypatch):
+    monkeypatch.setenv("APIFY_TOKEN", "test_token")
+    since = datetime.now(timezone.utc) - timedelta(hours=1)
+    tweet = _tweet("tweet-777", screen_name="karpathy")
+    tweet["tweet_url"] = "https://x.com/karpathy/status/777"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "/runs" in request.url.path and request.method == "POST":
+            return httpx.Response(200, json=_run_resp())
+        if "/actor-runs/" in request.url.path:
+            return httpx.Response(200, json=_status_resp())
+        if "/datasets/" in request.url.path:
+            return httpx.Response(200, json=[tweet])
+        raise AssertionError(f"Unexpected: {request.url}")
+
+    transport = httpx.MockTransport(handler)
+    client = httpx.AsyncClient(transport=transport)
+    result = asyncio.run(TwitterScraper(_make_config(), client).fetch(since))
+    asyncio.run(client.aclose())
+
+    assert str(result[0].url) == "https://x.com/karpathy/status/777"
+
+
+def test_constructed_url_strips_actor_prefix(monkeypatch):
+    monkeypatch.setenv("APIFY_TOKEN", "test_token")
+    since = datetime.now(timezone.utc) - timedelta(hours=1)
+    tweet = _tweet("tweet-888", screen_name="karpathy")
+    tweet.pop("url", None)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "/runs" in request.url.path and request.method == "POST":
+            return httpx.Response(200, json=_run_resp())
+        if "/actor-runs/" in request.url.path:
+            return httpx.Response(200, json=_status_resp())
+        if "/datasets/" in request.url.path:
+            return httpx.Response(200, json=[tweet])
+        raise AssertionError(f"Unexpected: {request.url}")
+
+    transport = httpx.MockTransport(handler)
+    client = httpx.AsyncClient(transport=transport)
+    result = asyncio.run(TwitterScraper(_make_config(), client).fetch(since))
+    asyncio.run(client.aclose())
+
+    assert str(result[0].url) == "https://twitter.com/karpathy/status/888"
+    assert result[0].id == "twitter:tweet:888"

@@ -27,6 +27,7 @@ from .scrapers.openbb import OpenBBScraper
 from .scrapers.ossinsight import OSSInsightScraper
 from .scrapers.gdelt import GDELTScraper
 from .scrapers.google_news import GoogleNewsScraper
+from .scrapers.youtube import YouTubeScraper
 from .ai.client import create_ai_client
 from .ai.analyzer import ContentAnalyzer
 from .ai.summarizer import DailySummarizer
@@ -434,7 +435,19 @@ class HorizonOrchestrator:
             List[ContentItem]: All fetched items
         """
         self.last_fetch_report = None
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        # Several origins (Cloudflare-fronted blogs, YouTube) reject the default
+        # python-httpx/… user agent with a 403/404, so send a browser-like one.
+        # Scrapers that need their own UA (GitHub API, Reddit) set it per request.
+        async with httpx.AsyncClient(
+            timeout=30.0,
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+                ),
+                "Accept-Language": "en-US,en;q=0.9,zh-CN;q=0.8",
+            },
+        ) as client:
             tasks = []
 
             # GitHub sources
@@ -495,6 +508,11 @@ class HorizonOrchestrator:
             if self.config.sources.google_news and self.config.sources.google_news.enabled:
                 gn_scraper = GoogleNewsScraper(self.config.sources.google_news, client)
                 tasks.append(self._fetch_with_progress("Google News", gn_scraper, since))
+
+            # YouTube channels (metadata only, via yt-dlp)
+            if self.config.sources.youtube and self.config.sources.youtube.enabled:
+                yt_scraper = YouTubeScraper(self.config.sources.youtube, client)
+                tasks.append(self._fetch_with_progress("YouTube", yt_scraper, since))
 
             # Fetch all concurrently
             outcomes = await asyncio.gather(*tasks)

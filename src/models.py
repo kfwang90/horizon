@@ -20,6 +20,7 @@ class SourceType(str, Enum):
     OSSINSIGHT = "ossinsight"
     GDELT = "gdelt"
     GOOGLE_NEWS = "google_news"
+    YOUTUBE = "youtube"
 
 
 class SourceDefinition(NamedTuple):
@@ -41,6 +42,7 @@ SOURCE_REGISTRY = {
     SourceType.OSSINSIGHT.value: SourceDefinition("ossinsight"),
     SourceType.GDELT.value: SourceDefinition("gdelt"),
     SourceType.GOOGLE_NEWS.value: SourceDefinition("google_news"),
+    SourceType.YOUTUBE.value: SourceDefinition("youtube", item_fields=("channels",)),
 }
 
 ProfileRoute = Optional[Union[str, List[str]]]
@@ -214,15 +216,28 @@ class AIConfig(BaseModel):
 
 
 class GitHubSourceConfig(BaseModel):
-    """GitHub source configuration."""
+    """GitHub source configuration.
 
-    type: str  # "user_events", "repo_releases", etc.
+    `type` selects the behavior:
+
+    - `user_events` — public activity for `username`
+    - `repo_releases` — new releases for `owner`/`repo`
+    - `trending` — the github.com/trending leaderboard. Uses `since`
+      (`daily`/`weekly`/`monthly`) and `languages` (GitHub language slugs such
+      as `python`; an empty list means all languages). No credentials needed.
+    """
+
+    type: str  # "user_events", "repo_releases", "trending"
     username: Optional[str] = None
     owner: Optional[str] = None
     repo: Optional[str] = None
     enabled: bool = True
     category: Optional[str] = None
     profile: ProfileRoute = None
+    # type == "trending" only
+    since: str = "daily"  # daily, weekly, monthly
+    languages: List[str] = Field(default_factory=list)  # e.g. ["python"]
+    max_items: Optional[int] = None
 
 
 class HackerNewsConfig(BaseModel):
@@ -338,9 +353,42 @@ class TwitterConfig(BaseModel):
     # Apify settings (used when mode == "apify")
     apify_token_env: str = "APIFY_TOKEN"
     actor_id: str = "altimis~scweet"
+    # Apify `profiles` mode: without this, the first profile can use the whole
+    # `max_items` budget and the remaining accounts return nothing.
+    per_profile_limit: Optional[int] = None
+    # Apify `search` mode ordering: "Latest" (newest first) or "Top"
+    # (engagement-ranked). Applies to keyword searches only.
+    search_sort: str = "Latest"
     # Playwright settings (used when mode == "playwright")
     cookie_dir: str = "data"
     cookie_file_pattern: str = "x_cookies_*.json"
+
+
+class YouTubeChannelConfig(BaseModel):
+    """Configuration for monitoring a single YouTube channel."""
+
+    channel: str  # @handle, channel URL, or UCxxxxxxxx channel id
+    enabled: bool = True
+    fetch_limit: Optional[int] = None  # newest N videos inspected; None = source default
+    category: Optional[str] = None
+    profile: ProfileRoute = None
+
+
+class YouTubeConfig(BaseModel):
+    """YouTube source configuration (metadata only, via yt-dlp).
+
+    Lists a channel's newest videos and keeps the most viewed ones. yt-dlp's
+    flat playlist extraction is used because it needs no API key and no
+    YouTube account.
+    """
+
+    enabled: bool = True
+    channels: List[YouTubeChannelConfig] = Field(default_factory=list)
+    fetch_limit: int = 3  # default newest N per channel
+    min_views: int = 0  # drop videos with fewer views than this
+    max_items: Optional[int] = None
+    category: Optional[str] = None
+    profile: ProfileRoute = None
 
 
 class OpenBBWatchlist(BaseModel):
@@ -452,6 +500,7 @@ class SourcesConfig(BaseModel):
     ossinsight: OSSInsightConfig = Field(default_factory=OSSInsightConfig)
     gdelt: Optional[GDELTConfig] = None
     google_news: Optional[GoogleNewsConfig] = None
+    youtube: Optional[YouTubeConfig] = None
 
 
 class WebhookConfig(BaseModel):

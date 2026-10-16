@@ -38,6 +38,9 @@ twitter = [
     "playwright>=1.40.0",
     "playwright-stealth>=1.0.0",
 ]
+youtube = [
+    "yt-dlp>=2025.1.15",
+]
 [project.scripts]
 horizon = "src.main:main"
 horizon-mcp = "src.mcp.server:main"

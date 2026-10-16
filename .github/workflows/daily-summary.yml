@@ -9,6 +9,11 @@ on:
 jobs:
   daily-summary:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # Never let two runs push source/horizon at the same time; queue them instead.
+    concurrency:
+      group: daily-summary
+      cancel-in-progress: false
     permissions:
       contents: write     # Needed to push this repo (and read for checkout)
 
@@ -27,7 +32,7 @@ jobs:
           version: "0.13.1"
 
       - name: Install dependencies
-        run: uv sync
+        run: uv sync --extra youtube
 
       - name: Prepare GitHub Actions config
         run: cp data/config.github.json data/config.json
@@ -57,11 +62,16 @@ jobs:
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           LWN_KEY: ${{ secrets.LWN_KEY }}
+          # X/Twitter via the Apify Scweet actor (sources.twitter.mode=apify).
+          # Without this secret the twitter source logs a warning and is skipped.
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
           # NOTE: HORIZON_WEBHOOK_URL is exported by the step above, only when
           # the secret is non-empty (an empty value would abort the run).
           # Optional: raise GitHub API rate limits used by the github source
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: uv run horizon --hours 24
+        # --extra youtube matters: a bare `uv run` re-syncs the venv without
+        # extras, which would uninstall yt-dlp again.
+        run: uv run --extra youtube horizon --hours 24
 
       - name: Set current date as environment variable
         run: echo "DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV

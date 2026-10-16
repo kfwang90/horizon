@@ -50,14 +50,17 @@ class TwitterScraper(BaseScraper):
 
         if users:
             logger.info(f"Fetching Twitter (Apify) for users: {users}")
+            profiles_payload = {
+                "source_mode": "profiles",
+                "profile_urls": users,
+                "search_sort": self.config.search_sort,
+                "max_items": max_items,
+            }
+            if self.config.per_profile_limit:
+                profiles_payload["per_profile_limit"] = self.config.per_profile_limit
             await self._collect_from_payload(
                 token,
-                {
-                    "source_mode": "profiles",
-                    "profile_urls": users,
-                    "search_sort": "Latest",
-                    "max_items": max_items,
-                },
+                profiles_payload,
                 since,
                 items,
                 seen_ids,
@@ -71,8 +74,14 @@ class TwitterScraper(BaseScraper):
                     {
                         "source_mode": "search",
                         "search_query": keyword,
-                        "search_sort": "Latest",
+                        "search_sort": self.config.search_sort,
                         "max_items": max_items,
+                        # Bound the actor to the pipeline window. Items are
+                        # filtered client-side too, but asking the actor avoids
+                        # paying for out-of-window rows (matters with
+                        # search_sort="Top").
+                        "since": since.astimezone(timezone.utc).strftime("%Y-%m-%d"),
+                        "until": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
                     },
                     since,
                     items,
@@ -289,10 +298,9 @@ class TwitterScraper(BaseScraper):
                 return None
 
             # Normalize tweet_id: scweet prefixes with "tweet-"
-            raw_id = item.get("id") or ""
             numeric_id = (
-                str(raw_id).replace("tweet-", "")
-                if str(raw_id).startswith("tweet-")
+                tweet_id.replace("tweet-", "")
+                if tweet_id.startswith("tweet-")
                 else tweet_id
             )
             conversation_id = str(
@@ -317,13 +325,14 @@ class TwitterScraper(BaseScraper):
                 return None
             text = unescape(text)
 
-            url = item.get("url")
+            url = item.get("url") or item.get("tweet_url")
             if not url:
                 permalink = item.get("permalink")
                 if permalink and screen_name != "unknown":
                     url = f"https://twitter.com/{screen_name}{permalink}"
                 else:
-                    url = f"https://twitter.com/{screen_name}/status/{tweet_id}"
+                    # numeric_id already has the actor's "tweet-" prefix stripped
+                    url = f"https://twitter.com/{screen_name}/status/{numeric_id}"
 
             title_body = text[:50].replace("\n", " ").strip()
             if len(text) > 50:

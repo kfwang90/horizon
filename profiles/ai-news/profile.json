@@ -1,0 +1,26 @@
+{
+  "id": "ai-news",
+  "name": "AI News",
+  "display_names": {
+    "zh": "AI 热门新闻",
+    "en": "AI News"
+  },
+  "match": "match.md",
+  "analysis": "analysis.md",
+  "enrichment": {
+    "prompt": "enrichment.md",
+    "blocks": [
+      {
+        "id": "summary",
+        "type": "section",
+        "tools": [],
+        "primary": true
+      },
+      {
+        "id": "why_it_matters",
+        "type": "section",
+        "tools": []
+      }
+    ]
+  }
+}
