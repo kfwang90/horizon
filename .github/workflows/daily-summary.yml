@@ -53,12 +53,18 @@ jobs:
         run: echo "DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
       # ------------------------------------------------------------------
-      # Publish the daily report into your existing Pages site, as a
-      # subdirectory: https://<owner>.github.io/horizon/
+      # Publish the daily report into the existing Hexo site:
+      #   https://kfwang90.github.io/horizon/
       #
-      # The docs/ folder is a Jekyll site, so we build it to static files
-      # here; a nested _posts/ directory would NOT be processed if we pushed
-      # the raw Jekyll sources into a subdirectory of the parent site.
+      # docs/ is itself a Jekyll site, so we pre-build it to plain static
+      # files and push them into the Hexo repo's source/horizon/. Hexo's
+      # `generate` copies source/horizon/** verbatim into public/horizon/**,
+      # and the target repo's existing Actions workflow (static.yml)
+      # deploys public/ via deploy-pages.
+      #
+      # Note: pushing to the target repo's main branch is what triggers its
+      # Hexo deploy workflow. We use a PAT because GITHUB_TOKEN can only
+      # push/publish within this repo.
       # ------------------------------------------------------------------
       - name: Point the Horizon site at the /horizon subpath
         run: |
@@ -72,18 +78,20 @@ jobs:
           source: ./docs
           destination: ./docs/_site
 
-      - name: Deploy to <owner>.github.io/horizon
+      - name: Deploy daily report into the Hexo repo (source/horizon)
         uses: peaceiris/actions-gh-pages@v4
         with:
           # PAT with write access to the target Pages repo (GITHUB_TOKEN can
           # only push to this repo, not to another one).
           personal_token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
-          # Defaults to <owner>/<owner>.github.io; override with a repository
-          # variable PAGES_REPO if the target repo lives elsewhere.
+          # Target repo. Defaults to <owner>/<owner>.github.io
+          # (kfwang90/kfwang90.github.io); override with a repository
+          # variable PAGES_REPO if needed.
           external_repository: ${{ vars.PAGES_REPO || format('{0}/{0}.github.io', github.repository_owner) }}
           publish_branch: main
           publish_dir: ./docs/_site
-          dest_dir: horizon
-          keep_files: true      # keep the rest of your existing site
-          enable_jekyll: true   # do NOT write .nojekyll (your site needs Jekyll)
+          # Hexo copies source/horizon/** verbatim into public/horizon/**
+          dest_dir: source/horizon
+          keep_files: true      # keep the rest of the Hexo repo untouched
+          enable_jekyll: true   # do not write a .nojekyll file
           commit_message: "📝 Horizon daily: ${{ env.DATE }}"

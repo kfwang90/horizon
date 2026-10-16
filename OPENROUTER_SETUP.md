@@ -59,19 +59,28 @@ cd ~/horizon
 ~/.local/bin/uv run horizon-webhook --dry-run   # 预览 Webhook 内容
 ```
 
-## 3. GitHub Actions 定时自动发布（并入现有 Pages 站点）
+## 3. GitHub Actions 定时自动发布（并入现有 Hexo 站点）
+
+目标仓库 `kfwang90/kfwang90.github.io` 是一个 **Hexo 博客**，用 GitHub Actions 部署
+（`.github/workflows/static.yml`：`hexo generate` → `public/` → `deploy-pages`），
+Pages 的 Source 是 **GitHub Actions**，并非 "Deploy from a branch"。
+
+> **第 4 步不需要改。** 但接入方式也不同：不能推 `gh-pages` 分支（Actions 源不读分支内容），
+> 而要把**预构建好的静态文件**推到 Hexo 仓库的 `source/horizon/`，由 Hexo `generate` 原样拷入
+> `public/horizon/`，再交给你现有的工作流部署。
 
 工作流 `.github/workflows/daily-summary.yml` 每天 23:00 UTC（北京时间 07:00）运行：
 
 ```
-生成日报 → 用 Jekyll 把 docs/ 预构建成静态站点 → 推送到 <owner>.github.io 的 horizon/ 子目录
+生成日报 → CI 内 jekyll build 把 docs/ 编译成静态 HTML → 推送到 kfwang90.github.io 的 source/horizon/（main）
+        → 触发 Hexo 工作流（hexo generate → public/）→ GitHub Pages 部署
 ```
 
-最终地址：`https://<owner>.github.io/horizon/`
+最终地址：`https://kfwang90.github.io/horizon/`
 
-> **为什么要预构建**：`docs/` 本身就是个 Jekyll 站点（`_config.yml` + `_posts` + 远程主题 `jekyll-theme-cayman`）。
-> 而 `<owner>.github.io` 这种用户主页只会做**一次** Jekyll 构建，且只收集**根目录**的 `_posts`；
-> 直接把 Jekyll 源码塞进子目录，嵌套的 `_posts` 不会生效。所以改用「CI 内先 `jekyll build` 成静态 HTML，再推子目录」。
+> **为什么要预构建**：`docs/` 本身是 Jekyll 站点（`_config.yml` + `_posts` + 远程主题）。
+> Hexo 只会把 `source/` 里的非渲染文件当静态资源拷贝，不会替你渲染 Jekyll 语法；
+> 直接推 Jekyll 源码到 `source/horizon/`，最后只会得到一堆没渲染的 `.md`。因此先 `jekyll build` 成纯静态 HTML。
 
 ### 需要你手动完成
 
@@ -84,23 +93,40 @@ cd ~/horizon
    ```
 
 2. **创建跨仓库推送用的 PAT**（存为 Secret `PAGES_DEPLOY_TOKEN`）：
-   - 目标是 `<用户名>.github.io`，而 `GITHUB_TOKEN` 只能推**当前**仓库 → 必须用 PAT
-   - Fine-grained token：Repository access 选 `<用户名>.github.io`，权限 **Contents: Read and write**
+   - 目标是 `kfwang90/kfwang90.github.io`，而 `GITHUB_TOKEN` 只能推**当前**仓库 → 必须用 PAT
+   - Fine-grained token：Repository access 选 `kfwang90.github.io`，权限 **Contents: Read and write**
    - 或 classic token：勾选 `repo` 作用域
    - 生成地址：GitHub → Settings → Developer settings → Personal access tokens
 
 3. **在 Horizon 仓库配 Secrets / Variables**（Settings → Secrets and variables → Actions）：
    - Secret `PAGES_DEPLOY_TOKEN` = 上面的 PAT
    - Secret `OPENROUTER_API_KEY` = 你的 OpenRouter key（https://openrouter.ai/keys）
-   - Variable（可选）`PAGES_REPO` = 目标仓库，默认 `<owner>/<owner>.github.io`
+   - Variable（可选）`PAGES_REPO` = `kfwang90/kfwang90.github.io`（不填则按 `<owner>/<owner>.github.io` 推断）
    - Variable（可选）`HORIZON_AI_MODEL` = 模型 id（默认 `google/gemini-2.5-flash-lite`）
    - 可选：Secret `HORIZON_WEBHOOK_URL`、`LWN_KEY`
 
-4. **确认主页仓库的 Pages 设置**：`<用户名>.github.io` → Settings → Pages →
-   Source = **Deploy from a branch** → `main` / `/ (root)`
+4. **不需要动 Pages 设置**：保持 Source = **GitHub Actions** 即可。
 
-5. **首次运行**：Horizon 仓库 → Actions → Daily Horizon Summary → Run workflow
-   - 跑完后访问 `https://<用户名>.github.io/horizon/`
+5. **【必须】在 `kfwang90.github.io/_config.yml` 让 Hexo 跳过渲染该目录**：
+
+   ```yaml
+   skip_render:
+     - 'horizon/**'
+   ```
+
+   > 这是实测得出的必需项：Hexo 会把 `source/` 下的 `.html` 当**页面**用主题模板渲染
+   > （内容被套进 post 布局、`{{ }}` 被 Nunjucks 吃掉）。加 `skip_render` 后才原样拷贝。
+   > 本机 `~/kfwang90.github.io/_config.yml` 已改好（仅此一处改动），记得提交并推送：
+
+   ```bash
+   cd ~/kfwang90.github.io
+   git add _config.yml
+   git commit -m "chore: skip_render horizon/** for Horizon daily digest"
+   git push
+   ```
+
+6. **首次运行**：Horizon 仓库 → Actions → Daily Horizon Summary → Run workflow。
+   Horizon 推送到 Hexo 仓库后会触发其 `static.yml`，等它构建完成后访问 `https://kfwang90.github.io/horizon/`。
 
 ### 说明
 
@@ -108,14 +134,9 @@ cd ~/horizon
   该文件的模型写作 `${HORIZON_AI_MODEL}`，由工作流的 `env` 注入（默认回退 `google/gemini-2.5-flash-lite`）。
 - 构建时会把 `docs/_config.yml` 的 `baseurl` 改成 `/horizon`、`url` 改成 `https://<owner>.github.io`，
   使站内链接指向子目录（仅运行时修改，不改仓库里的文件）。
-- 推送用 `keep_files: true`，**不会覆盖**你主页仓库里已有的内容；`enable_jekyll: true` 保证不写入 `.nojekyll`。
-- 仓库自带的 `deploy-docs.yml`（push 到 main 且改 `docs/**` 时触发）现在已无实际作用，可删可留。
+- 推送用 `dest_dir: source/horizon` + `keep_files: true`，**不会动** Hexo 仓库里的其它内容。
+- 用 PAT 推送才会**触发**目标仓库的 Actions（用 `GITHUB_TOKEN` 推送不会触发工作流）。
 - `data/config.json`、`.env` 已在 `.gitignore` 中，不会被提交。
-
-### 备选：不想用跨仓库 PAT
-
-也可以让 Horizon 仍发布到自己仓库的 `gh-pages`，只在你主页加一个链接指向它
-（把工作流里的 `external_repository` / `personal_token` 去掉，改回 `publish_dir: ./docs`）。
 
 
 ## 4. 相关文件清单
