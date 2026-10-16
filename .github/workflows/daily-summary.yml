@@ -10,7 +10,7 @@ jobs:
   daily-summary:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # Needed to commit generated docs to gh-pages
+      contents: write     # Needed to push this repo (and read for checkout)
 
     steps:
       - name: Checkout code
@@ -34,7 +34,6 @@ jobs:
 
       - name: Run Horizon
         env:
-          # Map secrets to environment variables expected by config.github.json
           # data/config.github.json uses ai.api_key_env = OPENROUTER_API_KEY
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           # Model id (ai.model = ${HORIZON_AI_MODEL}); override via repo variable
@@ -53,12 +52,38 @@ jobs:
       - name: Set current date as environment variable
         run: echo "DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
-      - name: Deploy to GitHub Pages
+      # ------------------------------------------------------------------
+      # Publish the daily report into your existing Pages site, as a
+      # subdirectory: https://<owner>.github.io/horizon/
+      #
+      # The docs/ folder is a Jekyll site, so we build it to static files
+      # here; a nested _posts/ directory would NOT be processed if we pushed
+      # the raw Jekyll sources into a subdirectory of the parent site.
+      # ------------------------------------------------------------------
+      - name: Point the Horizon site at the /horizon subpath
+        run: |
+          sed -i 's#^baseurl:.*#baseurl: "/horizon"#' docs/_config.yml
+          sed -i "s#^url:.*#url: \"https://${{ github.repository_owner }}.github.io\"#" docs/_config.yml
+          grep -E '^(baseurl|url):' docs/_config.yml
+
+      - name: Build the Horizon site (Jekyll -> static files)
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./docs
+          destination: ./docs/_site
+
+      - name: Deploy to <owner>.github.io/horizon
         uses: peaceiris/actions-gh-pages@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs
-          keep_files: true  # Keep existing summaries on gh-pages branch
-          commit_message: "📝 Daily Summary: ${{ env.DATE }}"
-          publish_branch: gh-pages
-          enable_jekyll: true
+          # PAT with write access to the target Pages repo (GITHUB_TOKEN can
+          # only push to this repo, not to another one).
+          personal_token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+          # Defaults to <owner>/<owner>.github.io; override with a repository
+          # variable PAGES_REPO if the target repo lives elsewhere.
+          external_repository: ${{ vars.PAGES_REPO || format('{0}/{0}.github.io', github.repository_owner) }}
+          publish_branch: main
+          publish_dir: ./docs/_site
+          dest_dir: horizon
+          keep_files: true      # keep the rest of your existing site
+          enable_jekyll: true   # do NOT write .nojekyll (your site needs Jekyll)
+          commit_message: "📝 Horizon daily: ${{ env.DATE }}"

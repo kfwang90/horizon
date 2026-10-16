@@ -59,14 +59,23 @@ cd ~/horizon
 ~/.local/bin/uv run horizon-webhook --dry-run   # 预览 Webhook 内容
 ```
 
-## 3. GitHub Actions 定时自动发布
+## 3. GitHub Actions 定时自动发布（并入现有 Pages 站点）
 
-工作流 `.github/workflows/daily-summary.yml` 每天 23:00 UTC（北京时间 07:00）运行，
-`uv run horizon --hours 24` 生成日报，再用 `peaceiris/actions-gh-pages` 发布 `docs/` 到 `gh-pages` 分支。
+工作流 `.github/workflows/daily-summary.yml` 每天 23:00 UTC（北京时间 07:00）运行：
+
+```
+生成日报 → 用 Jekyll 把 docs/ 预构建成静态站点 → 推送到 <owner>.github.io 的 horizon/ 子目录
+```
+
+最终地址：`https://<owner>.github.io/horizon/`
+
+> **为什么要预构建**：`docs/` 本身就是个 Jekyll 站点（`_config.yml` + `_posts` + 远程主题 `jekyll-theme-cayman`）。
+> 而 `<owner>.github.io` 这种用户主页只会做**一次** Jekyll 构建，且只收集**根目录**的 `_posts`；
+> 直接把 Jekyll 源码塞进子目录，嵌套的 `_posts` 不会生效。所以改用「CI 内先 `jekyll build` 成静态 HTML，再推子目录」。
 
 ### 需要你手动完成
 
-1. **创建 GitHub 仓库并推送**（本机已初始化 git，但没有配置远程/凭据）：
+1. **把这份 Horizon 推到自己的仓库**（本机已 `git init -b main`，但没有远程/凭据）：
 
    ```bash
    cd ~/horizon
@@ -74,23 +83,40 @@ cd ~/horizon
    git push -u origin main
    ```
 
-2. **配置仓库 Secret / Variable**：仓库 → Settings → Secrets and variables → Actions
-   - Secret `OPENROUTER_API_KEY` = 你的 OpenRouter API key（https://openrouter.ai/keys）
-   - Variable（可选）`HORIZON_AI_MODEL` = 模型 id；不设置则工作流回退到默认
-     `google/gemini-2.5-flash-lite`
-   - 可选：Secret `HORIZON_WEBHOOK_URL`（飞书/钉钉/Slack 通知）、`LWN_KEY`
+2. **创建跨仓库推送用的 PAT**（存为 Secret `PAGES_DEPLOY_TOKEN`）：
+   - 目标是 `<用户名>.github.io`，而 `GITHUB_TOKEN` 只能推**当前**仓库 → 必须用 PAT
+   - Fine-grained token：Repository access 选 `<用户名>.github.io`，权限 **Contents: Read and write**
+   - 或 classic token：勾选 `repo` 作用域
+   - 生成地址：GitHub → Settings → Developer settings → Personal access tokens
 
-3. **开启 GitHub Pages**：仓库 → Settings → Pages → Build and deployment → Source 选
-   **Deploy from a branch** → 分支选 `gh-pages` / 根目录。之后首次运行工作流即可访问站点。
+3. **在 Horizon 仓库配 Secrets / Variables**（Settings → Secrets and variables → Actions）：
+   - Secret `PAGES_DEPLOY_TOKEN` = 上面的 PAT
+   - Secret `OPENROUTER_API_KEY` = 你的 OpenRouter key（https://openrouter.ai/keys）
+   - Variable（可选）`PAGES_REPO` = 目标仓库，默认 `<owner>/<owner>.github.io`
+   - Variable（可选）`HORIZON_AI_MODEL` = 模型 id（默认 `google/gemini-2.5-flash-lite`）
+   - 可选：Secret `HORIZON_WEBHOOK_URL`、`LWN_KEY`
 
-4. **首次运行**：仓库 → Actions → Daily Horizon Summary → Run workflow（手动触发一次验证）。
+4. **确认主页仓库的 Pages 设置**：`<用户名>.github.io` → Settings → Pages →
+   Source = **Deploy from a branch** → `main` / `/ (root)`
+
+5. **首次运行**：Horizon 仓库 → Actions → Daily Horizon Summary → Run workflow
+   - 跑完后访问 `https://<用户名>.github.io/horizon/`
 
 ### 说明
 
 - 工作流会先执行 `cp data/config.github.json data/config.json`，因此 **CI 用的是 `data/config.github.json`**。
-  该文件的模型同样写作 `${HORIZON_AI_MODEL}`，由工作流的 `env` 注入（默认回退 `google/gemini-2.5-flash-lite`）。
-- 仓库自带的 `deploy-docs.yml` 只在 push 到 `main` 且改动 `docs/**` 时触发，与本工作流不冲突（都发布到 `gh-pages`）。
+  该文件的模型写作 `${HORIZON_AI_MODEL}`，由工作流的 `env` 注入（默认回退 `google/gemini-2.5-flash-lite`）。
+- 构建时会把 `docs/_config.yml` 的 `baseurl` 改成 `/horizon`、`url` 改成 `https://<owner>.github.io`，
+  使站内链接指向子目录（仅运行时修改，不改仓库里的文件）。
+- 推送用 `keep_files: true`，**不会覆盖**你主页仓库里已有的内容；`enable_jekyll: true` 保证不写入 `.nojekyll`。
+- 仓库自带的 `deploy-docs.yml`（push 到 main 且改 `docs/**` 时触发）现在已无实际作用，可删可留。
 - `data/config.json`、`.env` 已在 `.gitignore` 中，不会被提交。
+
+### 备选：不想用跨仓库 PAT
+
+也可以让 Horizon 仍发布到自己仓库的 `gh-pages`，只在你主页加一个链接指向它
+（把工作流里的 `external_repository` / `personal_token` 去掉，改回 `publish_dir: ./docs`）。
+
 
 ## 4. 相关文件清单
 
