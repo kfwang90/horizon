@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+{%- comment -%}
+  与博客 Hexo 主题 themes/zero 保持一致的布局。
+  导航/页脚的结构与 themes/zero/layout/layout.njk 对齐，样式直接复用博客
+  的 /css/site.css 与 /css/article.css（同一域名，根路径引用即可）。
+  若以后修改博客主题的导航菜单，请同步这里。
+{%- endcomment -%}
+<html lang="{{ page.lang | default: 'zh-CN' }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="{{ page.description | default: site.description }}">
+<title>{% if page.title %}{{ page.title }} · 零度の栈{% else %}{{ site.title }}{% endif %}</title>
+<link rel="stylesheet" href="/css/site.css">
+<link rel="stylesheet" href="/css/article.css">
+{% include head-custom.html %}
+</head>
+<body>
+
+<nav>
+  <div class="container">
+    <a class="logo" href="/">dev<span class="cursor"></span></a>
+    <button class="menu-toggle" id="menuToggle" aria-label="菜单">☰</button>
+    <div class="nav-links" id="navLinks">
+      <a href="/">首页</a>
+      <a href="/#posts">文章目录</a>
+      <a href="/#tags">标签</a>
+      <a href="/#about">关于</a>
+      <a href="https://github.com/kfwang90">联系</a>
+    </div>
+  </div>
+</nav>
+
+<main class="article-main">
+  <div class="container">
+
+    <nav class="crumbs" aria-label="位置">
+      <a href="/">首页</a>
+      <span class="sep">/</span>
+      {%- if page.url == '/' -%}
+      <span class="cur">Horizon 每日速递</span>
+      {%- else -%}
+      <a href="{{ '/' | relative_url }}">Horizon 每日速递</a>
+      <span class="sep">/</span>
+      <span class="cur">{{ page.title }}</span>
+      {%- endif -%}
+    </nav>
+
+    {%- comment -%}
+      .main-content 是 assets/js/horizon.js 的挂钩点：它会给正文里的
+      「⭐️ N/10」换成评分徽章，并给来源行/标签行补上语义 class。
+    {%- endcomment -%}
+    <article class="post-detail main-content">
+
+      {% if page.date %}
+      <div class="post-meta">
+        <span>{{ page.date | date: "%Y-%m-%d" }}</span>
+        {% if page.lang %}<span>{{ page.lang | upcase }}</span>{% endif %}
+        <span>Horizon</span>
+      </div>
+      {% endif %}
+
+      {{ content }}
+
+    </article>
+
+    <div class="article-foot">
+      <a class="btn btn-ghost" href="/#posts">← 返回文章目录</a>
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  <div class="container">
+    <div class="social">
+      <a href="https://github.com/kfwang90">GitHub</a>
+      <a href="{{ '/feed.xml' | relative_url }}">RSS</a>
+    </div>
+    <p>© {{ site.time | date: "%Y" }} Nero · 每日速递由 Horizon 自动生成</p>
+  </div>
+</footer>
+
+<script src="/js/site.js" defer></script>
+{% if page.date %}
+<button class="to-top" id="toTop" type="button" aria-label="返回顶部">↑</button>
+<script src="/js/article.js" defer></script>
+{% endif %}
+
+</body>
+</html>

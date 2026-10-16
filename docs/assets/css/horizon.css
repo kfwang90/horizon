@@ -1,191 +1,124 @@
-/* ===== Horizon Custom Styles ===== */
+/* ==========================================================================
+   Horizon 每日速递 · 博客主题补充样式
+   --------------------------------------------------------------------------
+   基础外观全部来自博客主题：
+     /css/site.css      主题变量、导航、卡片、页脚
+     /css/article.css   正文排版（.post-detail / .post-meta / .post-tags / 代码块）
+   本文件只补充博客主题没有覆盖的部分：评分徽章、折叠引用、来源行、
+   中英切换按钮、RSS 图标。配色一律使用 blog 的 CSS 变量，保持素色一致。
+   ========================================================================== */
 
-/* --- CSS Variables & Dark Mode (Horizon Dawn) --- */
-/* Palette derived from horizon-header.svg sunrise:
-   #312e81 deep indigo · #be185d rose · #f97316 orange · #fbbf24 gold
-   #4c1d95 mountain purple · #701a75 distant purple                  */
-:root {
-  --hz-bg: #faf8f5;          /* warm parchment white */
-  --hz-surface: #f3f0eb;     /* slightly warm gray */
-  --hz-border: #e0dbd3;      /* warm border */
-  --hz-text: #2d2a3e;        /* deep indigo-ink */
-  --hz-text-muted: #7c7891;  /* muted lavender gray */
-  --hz-link: #6d4aaa;        /* mountain purple, lighter */
-  --hz-code-bg: #f0ede7;     /* warm code bg */
-  --hz-accent: #e0652e;      /* sunrise orange, toned down */
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --hz-bg: #1a1726;        /* pre-dawn deep purple-black */
-    --hz-surface: #231f33;   /* night sky surface */
-    --hz-border: #342f4a;    /* indigo border */
-    --hz-text: #e8e4f0;      /* moonlight white-lavender */
-    --hz-text-muted: #8c86a0; /* muted twilight */
-    --hz-link: #f0a848;      /* dawn gold */
-    --hz-code-bg: #211d30;   /* deep code bg */
-    --hz-accent: #e87040;    /* sunrise orange-coral */
-  }
-}
-
-/* Apply variables to base elements */
-body {
-  background-color: var(--hz-bg) !important;
-  color: var(--hz-text) !important;
-}
-
-a {
-  color: var(--hz-link) !important;
-}
-
-code {
-  background-color: var(--hz-code-bg) !important;
-  color: var(--hz-text) !important;
-}
-
-pre {
-  background-color: var(--hz-code-bg) !important;
-  color: var(--hz-text) !important;
-  border: 1px solid var(--hz-border) !important;
-}
-
-hr {
-  border-color: var(--hz-border) !important;
-}
-
-h1, h2, h3, h4, h5, h6 {
-  color: var(--hz-text) !important;
-  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Helvetica Neue", Arial, sans-serif !important;
-  font-weight: 800 !important;
-}
-
-/* Override Cayman header gradient — Horizon sunrise from SVG */
-.page-header {
-  background: linear-gradient(120deg, #312e81, #be185d, #f97316) !important;
-}
-
-.page-header h1,
-.page-header h2,
-.page-header .project-tagline,
-.page-header a {
-  color: #fff !important;
-}
-
-/* --- Score Badge --- */
+/* ===== 评分徽章（由 assets/js/horizon.js 把「⭐️ N/10」替换而来）=====
+   单色阶：分数越高越深，避免引入与博客冲突的彩色。 */
 .score-badge {
   display: inline-block;
-  padding: 0.1em 0.5em;
-  border-radius: 3px;
-  font-family: monospace;
-  font-size: 0.75em;
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 0.72em;
   font-weight: 700;
+  line-height: 1.5;
   color: #fff;
-  margin-left: 0.4em;
+  background: var(--fg-muted);
+  margin-left: 8px;
   vertical-align: middle;
 }
 
-.score-badge[data-tier="high"] { background: #be185d; } /* rose — from SVG */
-.score-badge[data-tier="good"] { background: #e0652e; } /* sunrise orange */
-.score-badge[data-tier="mid"]  { background: #d4a017; } /* warm gold */
-.score-badge[data-tier="low"]  { background: #7c7891; } /* muted lavender */
+.score-badge[data-tier="high"] { background: var(--fg); }
+.score-badge[data-tier="good"] { background: var(--accent); }
+.score-badge[data-tier="mid"]  { background: #9aa1aa; }
+.score-badge[data-tier="low"]  { background: var(--border); color: var(--fg-muted); }
 
-/* --- Tag Pills --- */
-.tag-line code {
-  border-radius: 3px;
-  padding: 0.1em 0.5em;
-  font-size: 0.8em;
-  background: var(--hz-accent) !important;
-  color: #fff !important;
+/* ===== 来源行（由 horizon.js 标记）===== */
+.main-content p.source-line {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--fg-muted);
+  margin-top: -4px;
 }
 
-@media (prefers-color-scheme: dark) {
-  .tag-line code {
-    background: #342f4a !important;   /* indigo border */
-    color: #f0a848 !important;        /* dawn gold */
-  }
+/* ===== 条目之间的分隔线（正文里的 --- ）===== */
+.post-detail hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 28px 0;
 }
 
-/* --- Source Line --- */
-.source-line {
-  font-size: 0.85em;
-  color: var(--hz-text-muted);
-  border-left: 2px solid var(--hz-accent);
-  padding-left: 0.6em;
+/* 每条正文前会有一个只含锚点的空段落（<p><a id="item-1"></a></p>），
+   隐藏它，避免标题上方多出一段空白。老浏览器不支持 :has 时保持原样。 */
+.post-detail p:has(> a:not([href]):only-child) { display: none; }
+
+/* ===== 折叠的「参考链接」 ===== */
+.post-detail details {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  margin: 14px 0 18px;
 }
 
-/* --- Collapsible References --- */
-.main-content details {
-  border: 1px solid var(--hz-border);
-  border-radius: 4px;
-  margin: 0.8em 0;
-}
-
-.main-content details summary {
+.post-detail details summary {
   cursor: pointer;
-  padding: 0.4em 0.8em;
-  font-weight: 600;
-  color: var(--hz-text-muted);
+  padding: 7px 12px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--fg-muted);
 }
 
-.main-content details > ul {
-  padding: 0.4em 0.8em 0.4em 2em;
+.post-detail details summary:hover { color: var(--fg); }
+
+.post-detail details > ul {
   margin: 0;
+  padding: 2px 12px 10px 30px;
+  font-size: 13.5px;
 }
 
-/* --- TOC Ordered List --- */
-.main-content > ol {
-  border: 1px solid var(--hz-border);
-  border-radius: 4px;
-  padding: 0.8em 0.8em 0.8em 2em;
-  background: var(--hz-surface);
-}
+.post-detail details > ul li { margin-bottom: 4px; }
 
-.main-content > ol > li {
-  padding: 0.3em 0;
-}
-
-/* --- Summary Blockquote --- */
-.main-content > blockquote:first-of-type {
-  border-left-color: var(--hz-accent);
-  color: var(--hz-text-muted);
-  font-style: normal;
-}
-
-/* --- Language Toggle (fixed top-right) --- */
+/* ===== 首页的中英切换（由 horizon.js 插入到 body 顶部，固定导航下方）===== */
 .lang-toggle {
   position: fixed;
-  top: 12px;
+  top: 72px;
   right: 16px;
-  z-index: 1000;
+  z-index: 90;
   display: flex;
-  gap: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .06);
 }
 
 .lang-toggle button {
-  padding: 0.3em 1em;
-  border: 1px solid rgba(255,255,255,0.4);
-  background: rgba(0,0,0,0.15);
-  color: #fff;
-  font-size: 0.8em;
+  padding: 5px 13px;
+  border: 0;
+  background: transparent;
+  color: var(--fg-muted);
+  font-family: var(--mono);
+  font-size: 12px;
   cursor: pointer;
-  backdrop-filter: blur(4px);
+  transition: background .2s, color .2s;
 }
 
-.lang-toggle button:first-child {
-  border-radius: 3px 0 0 3px;
+.lang-toggle button + button { border-left: 1px solid var(--border); }
+.lang-toggle button:hover { color: var(--fg); }
+.lang-toggle button.active { background: var(--accent); color: #fff; }
+
+.lang-section.hidden { display: none; }
+
+/* ===== 首页标题旁的 RSS 图标 ===== */
+.rss-icon {
+  opacity: .6;
+  color: inherit;
+  margin-left: 12px;
+  vertical-align: middle;
+  text-decoration: none;
+  transition: opacity .2s;
 }
 
-.lang-toggle button:last-child {
-  border-radius: 0 3px 3px 0;
-  border-left: none;
-}
+.rss-icon:hover { opacity: 1; color: var(--fg); }
+.rss-icon svg { width: .9em; height: .9em; display: inline-block; }
 
-.lang-toggle button.active {
-  background: var(--hz-accent);
-  color: #fff;
-  border-color: var(--hz-accent);
-}
-
-.lang-section.hidden {
-  display: none;
+/* ===== 响应式 ===== */
+@media (max-width: 720px) {
+  .lang-toggle { top: 68px; right: 12px; }
 }

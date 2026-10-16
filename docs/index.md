@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Home
+title: Horizon 每日速递
 ---
 
 # Horizon

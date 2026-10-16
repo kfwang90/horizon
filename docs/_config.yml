@@ -1,6 +1,9 @@
+# 本站发布到博客的 /horizon 子目录，外观与博客 Hexo 主题 themes/zero 保持一致。
+# 下面这行只是保底（github-pages 允许列表里的主题）；真正生效的是
+# _layouts/default.html —— 本地 layout 优先级高于 theme 自带的同名 layout。
 theme: jekyll-theme-cayman
-title: Horizon Daily
-description: AI-curated daily digest of tech and research news
+title: Horizon 每日速递
+description: 由 AI 自动筛选的 GitHub 热点项目、AI 新闻与 X / YouTube 热门内容
 baseurl: "/Horizon" # the subpath of your site, e.g. /blog
 url: "https://thysrael.github.io" # the base hostname & protocol for your site, e.g. http://example.com
 

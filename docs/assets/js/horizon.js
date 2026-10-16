@@ -34,7 +34,7 @@
       }
 
       // Source line: pattern like "source · site · date"
-      if (/^(rss|reddit|github|hackernews|hn|telegram)\s*·/i.test(text)) {
+      if (/^(github|hackernews|hn|rss|reddit|telegram|twitter|x|youtube|openbb|ossinsight|gdelt|google[ _]news)\s*·/i.test(text)) {
         p.classList.add('source-line');
         return;
       }
