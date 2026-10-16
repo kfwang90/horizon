@@ -68,22 +68,27 @@ jobs:
 
       # ------------------------------------------------------------------
       # Publish the daily report into the existing Hexo site:
-      #   https://kfwang90.github.io/horizon/
+      #   https://www.01040610.xyz/horizon/   (custom domain; the
+      #   kfwang90.github.io URL 301-redirects here)
       #
       # docs/ is itself a Jekyll site, so we pre-build it to plain static
-      # files and push them into the Hexo repo's source/horizon/. Hexo's
+      # files and copy them into the Hexo repo's source/horizon/. Hexo's
       # `generate` copies source/horizon/** verbatim into public/horizon/**,
-      # and the target repo's existing Actions workflow (static.yml)
-      # deploys public/ via deploy-pages.
+      # and the target repo's existing workflow (static.yml) deploys public/.
       #
-      # Note: pushing to the target repo's main branch is what triggers its
-      # Hexo deploy workflow. We use a PAT because GITHUB_TOKEN can only
-      # push/publish within this repo.
+      # We push with plain git instead of peaceiris/actions-gh-pages on
+      # purpose: that action's `exclude_assets` defaults to `.github`, so it
+      # DELETES the target repo's workflows, and its subdirectory input is
+      # `destination_dir` (not `dest_dir`). Doing it by hand only ever
+      # touches source/horizon/.
+      #
+      # A PAT is required because GITHUB_TOKEN can only write to this repo.
       # ------------------------------------------------------------------
       - name: Point the Horizon site at the /horizon subpath
         run: |
+          SITE_URL="${{ vars.PAGES_SITE_URL || 'https://www.01040610.xyz' }}"
           sed -i 's#^baseurl:.*#baseurl: "/horizon"#' docs/_config.yml
-          sed -i "s#^url:.*#url: \"https://${{ github.repository_owner }}.github.io\"#" docs/_config.yml
+          sed -i "s#^url:.*#url: \"${SITE_URL}\"#" docs/_config.yml
           grep -E '^(baseurl|url):' docs/_config.yml
 
       - name: Build the Horizon site (Jekyll -> static files)
@@ -92,20 +97,32 @@ jobs:
           source: ./docs
           destination: ./docs/_site
 
-      - name: Deploy daily report into the Hexo repo (source/horizon)
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          # PAT with write access to the target Pages repo (GITHUB_TOKEN can
-          # only push to this repo, not to another one).
-          personal_token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+      - name: Publish into the Hexo repo (source/horizon only)
+        env:
+          PAGES_DEPLOY_TOKEN: ${{ secrets.PAGES_DEPLOY_TOKEN }}
           # Target repo. Defaults to <owner>/<owner>.github.io
           # (kfwang90/kfwang90.github.io); override with a repository
           # variable PAGES_REPO if needed.
-          external_repository: ${{ vars.PAGES_REPO || format('{0}/{0}.github.io', github.repository_owner) }}
-          publish_branch: main
-          publish_dir: ./docs/_site
-          # Hexo copies source/horizon/** verbatim into public/horizon/**
-          dest_dir: source/horizon
-          keep_files: true      # keep the rest of the Hexo repo untouched
-          enable_jekyll: true   # do not write a .nojekyll file
-          commit_message: "📝 Horizon daily: ${{ env.DATE }}"
+          TARGET_REPO: ${{ vars.PAGES_REPO || format('{0}/{0}.github.io', github.repository_owner) }}
+        run: |
+          set -euo pipefail
+          WORK="$(mktemp -d)"
+          git clone --depth 1 \
+            "https://x-access-token:${PAGES_DEPLOY_TOKEN}@github.com/${TARGET_REPO}.git" \
+            "$WORK/site"
+
+          # Replace only source/horizon; never touch anything else.
+          rm -rf "$WORK/site/source/horizon"
+          mkdir -p "$WORK/site/source/horizon"
+          cp -a docs/_site/. "$WORK/site/source/horizon/"
+
+          cd "$WORK/site"
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A source/horizon
+          if git diff --cached --quiet; then
+            echo "No changes to publish."
+          else
+            git commit -m "📝 Horizon daily: ${DATE}"
+            git push origin HEAD:main
+          fi
