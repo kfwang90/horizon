@@ -1,4 +1,4 @@
-# Horizon 本地安装 + OpenCode API + GitHub Actions 自动发布
+# Horizon 本地安装 + OpenRouter + GitHub Actions 自动发布
 
 本说明记录本次本地化安装所做的配置与后续需要你手动完成的步骤。
 
@@ -10,57 +10,40 @@
 | uv | `~/.local/bin/uv`（0.13.1） | 无 sudo 安装 |
 | git | `~/.local/bin/git`（2.52.0） | 无 sudo，用 rpm 释放（包装脚本设置 `GIT_EXEC_PATH`） |
 | Python 环境 | `~/horizon/.venv` | 固定 Python 3.12（3.15 下 `regex` 无 wheel 会编译失败） |
-| 运行配置 | `data/config.json` | AI 使用 opencode 会话同款模型 |
+| 运行配置 | `data/config.json` | AI 使用 OpenRouter |
 | CI 配置 | `data/config.github.json` | 同上，供 Actions 使用 |
-| 环境变量 | `.env`（已被 .gitignore 忽略） | `OPENCODE_API_KEY=public` |
+| 环境变量 | `.env`（已被 .gitignore 忽略） | `OPENROUTER_API_KEY=...` |
 | 定时工作流 | `.github/workflows/daily-summary.yml` | 每天 23:00 UTC 运行并发布到 gh-pages |
-| 本地 git 仓库 | `~/horizon` | 已 `git init -b main` 并完成首次提交 |
+| 本地 git 仓库 | `~/horizon` | 已 `git init -b main` 并完成提交 |
 
 ### AI 配置（`ai` 段）
-
-沿用当前 opencode 会话的模型设置：
 
 ```json
 "ai": {
   "provider": "openai",
-  "model": "deepseek-v4.1-flash-free",
-  "base_url": "https://opencode.ai/inference/v1",
-  "api_key_env": "OPENCODE_API_KEY",
+  "model": "google/gemini-2.5-flash-lite",
+  "base_url": "https://openrouter.ai/api/v1",
+  "api_key_env": "OPENROUTER_API_KEY",
   "languages": ["zh", "en"]
 }
 ```
 
-> Horizon 的 `api_key_env` 只能是**环境变量名**，密钥值放在 `.env`。因此本地 `.env` 里写的是
-> `OPENCODE_API_KEY=public`（opencode 客户端使用的公开 key）。
+OpenRouter 是 OpenAI 兼容网关，因此 `provider` 用 `openai`；密钥放在 `.env` 的
+`OPENROUTER_API_KEY`（Horizon 的 `api_key_env` 只能是环境变量名，不能直接写密钥值）。
 
-## 2. 重要限制（务必阅读）
+想换模型只需改 `model` 字段，例如：
 
-OpenCode 的**免费模型只能在 OpenCode 内部调用**。在 Horizon / CI 里直接 HTTP 调用会得到：
+| 模型 | 说明 |
+| --- | --- |
+| `google/gemini-2.5-flash-lite` | 当前使用；便宜快速（$0.1/M in，$0.4/M out） |
+| `deepseek/deepseek-chat` | 极便宜，JSON 输出稳定 |
+| `google/gemini-2.5-flash` | 质量更高（$0.3/M in，$2.5/M out） |
+| `nvidia/nemotron-3.5-lightning:free` | 免费，需实测 JSON 模式兼容性 |
 
-```
-403 FreeTierError: OpenCode's free tier can only be used from within OpenCode.
-```
+> 注意：Horizon 会向模型发送 `response_format: {"type": "json_object"}`。请选择支持
+> JSON 模式的模型，否则打分/生成会失败。
 
-本机实测确认该错误存在，因此当前配置**能让 Horizon 正常启动、抓取、加载配置，但 AI 打分/生成阶段会失败**。
-
-要真正跑通，需要把 `OPENCODE_API_KEY` 换成**真实的 OpenCode Zen key**（在 https://opencode.ai/auth 获取），并把 `base_url` 改为官方网关：
-
-```json
-"base_url": "https://opencode.ai/zen/v1"
-```
-
-若暂时没有 Zen key，可改用其它有额度、OpenAI 兼容的 provider，例如 DeepSeek：
-
-```json
-"ai": {
-  "provider": "deepseek",
-  "model": "deepseek-chat",
-  "base_url": "https://api.deepseek.com",
-  "api_key_env": "DEEPSEEK_API_KEY"
-}
-```
-
-## 3. 本地运行
+## 2. 本地运行
 
 ```bash
 cd ~/horizon
@@ -69,7 +52,7 @@ cd ~/horizon
 ~/.local/bin/uv run horizon-webhook --dry-run   # 预览 Webhook 内容
 ```
 
-## 4. GitHub Actions 定时自动发布
+## 3. GitHub Actions 定时自动发布
 
 工作流 `.github/workflows/daily-summary.yml` 每天 23:00 UTC（北京时间 07:00）运行，
 `uv run horizon --hours 24` 生成日报，再用 `peaceiris/actions-gh-pages` 发布 `docs/` 到 `gh-pages` 分支。
@@ -85,8 +68,8 @@ cd ~/horizon
    ```
 
 2. **配置仓库 Secret**：仓库 → Settings → Secrets and variables → Actions → New repository secret
-   - `OPENCODE_API_KEY` = 你的真实 OpenCode Zen key（或改用其它 provider 对应的 key，如 `DEEPSEEK_API_KEY`）
-   - 可选：`HORIZON_WEBHOOK_URL`（飞书/钉钉/Slack 通知）、`LWN_KEY`、`GITHUB_TOKEN` 无需手动配置
+   - `OPENROUTER_API_KEY` = 你的 OpenRouter API key（https://openrouter.ai/keys）
+   - 可选：`HORIZON_WEBHOOK_URL`（飞书/钉钉/Slack 通知）、`LWN_KEY`
 
 3. **开启 GitHub Pages**：仓库 → Settings → Pages → Build and deployment → Source 选
    **Deploy from a branch** → 分支选 `gh-pages` / 根目录。之后首次运行工作流即可访问站点。
@@ -96,13 +79,13 @@ cd ~/horizon
 ### 说明
 
 - 工作流会先执行 `cp data/config.github.json data/config.json`，因此 **CI 用的是 `data/config.github.json`**。
-  若要调整 CI 行为（例如换 provider），改这个文件。
+  若要调整 CI 行为（例如换模型），改这个文件。
 - 仓库自带的 `deploy-docs.yml` 只在 push 到 `main` 且改动 `docs/**` 时触发，与本工作流不冲突（都发布到 `gh-pages`）。
 - `data/config.json`、`.env` 已在 `.gitignore` 中，不会被提交。
 
-## 5. 相关文件清单
+## 4. 相关文件清单
 
-- `data/config.json`：本地运行配置（AI 使用 opencode）
+- `data/config.json`：本地运行配置（AI 使用 OpenRouter）
 - `data/config.github.json`：CI 运行配置
-- `.env`：本地密钥（`OPENCODE_API_KEY=public`）
+- `.env`：本地密钥（`OPENROUTER_API_KEY=...`）
 - `.github/workflows/daily-summary.yml`：定时自动化工作流

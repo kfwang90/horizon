@@ -35,8 +35,8 @@ jobs:
       - name: Run Horizon
         env:
           # Map secrets to environment variables expected by config.github.json
-          # data/config.github.json uses ai.api_key_env = OPENCODE_API_KEY
-          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          # data/config.github.json uses ai.api_key_env = OPENROUTER_API_KEY
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
