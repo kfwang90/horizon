@@ -18,6 +18,29 @@ title: Horizon 每日速递
   {% endfor %}
 </ul>
 
+<h2 id="recent-zh">近期消息</h2>
+
+<p class="hz-recent-hint">最近一周收录的条目，点标题跳到当日速递里的点评。</p>
+
+{% if zh_posts.size == 0 %}
+<p><em>暂无内容</em></p>
+{% else %}
+{% for post in zh_posts limit:7 %}
+{% if post.items.size > 0 %}
+<details class="hz-recent-day"{% if forloop.first %} open{% endif %}>
+<summary>{{ post.date | date: "%Y-%m-%d" }} · {{ post.items | size }} 条</summary>
+
+<ul class="hz-recent-list">
+{% for item in post.items %}
+<li><a href="{{ post.url | relative_url }}#{{ item.anchor }}">{{ item.title | escape }}</a> <span class="hz-recent-meta">{{ item.section | escape }} · ⭐️ {{ item.score }}/10</span></li>
+{% endfor %}
+</ul>
+
+</details>
+{% endif %}
+{% endfor %}
+{% endif %}
+
 </div>
 
 <div id="lang-en" class="lang-section" markdown="1">
@@ -34,5 +57,28 @@ title: Horizon 每日速递
     <li><em>No posts yet</em></li>
   {% endfor %}
 </ul>
+
+<h2 id="recent-en">Recent items</h2>
+
+<p class="hz-recent-hint">Everything selected in the last week. Click a title to jump to its write-up in that day's digest.</p>
+
+{% if en_posts.size == 0 %}
+<p><em>No posts yet</em></p>
+{% else %}
+{% for post in en_posts limit:7 %}
+{% if post.items.size > 0 %}
+<details class="hz-recent-day"{% if forloop.first %} open{% endif %}>
+<summary>{{ post.date | date: "%Y-%m-%d" }} · {{ post.items | size }} items</summary>
+
+<ul class="hz-recent-list">
+{% for item in post.items %}
+<li><a href="{{ post.url | relative_url }}#{{ item.anchor }}">{{ item.title | escape }}</a> <span class="hz-recent-meta">{{ item.section | escape }} · ⭐️ {{ item.score }}/10</span></li>
+{% endfor %}
+</ul>
+
+</details>
+{% endif %}
+{% endfor %}
+{% endif %}
 
 </div>

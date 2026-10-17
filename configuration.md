@@ -1000,6 +1000,10 @@ docker compose run --rm --entrypoint uv horizon run horizon-wechat test --lang z
 
 Horizon writes generated summaries to `data/summaries/` (or `<data-dir>/summaries/` when `--data-dir` is set) and copies publishable Markdown into `docs/` for the GitHub Pages site. The repository includes a disabled daily workflow template at [`.github/workflows/daily-summary.yml.disabled`](../.github/workflows/daily-summary.yml.disabled). Configure it for your deployment and rename it to `daily-summary.yml` to enable scheduled generation.
 
+Each digest post also carries its own item list as JSON in the front matter (`items:`). `docs/index.md` uses it to render the 「近期消息」 (recent items) section, which lists the last seven days of entries grouped by day, so the index page never has to re-read every digest page.
+
+`docs/_posts/` is git-ignored, so a fresh runner only ever holds the current day. The workflow therefore restores previously published digests from the deploy repo's `.horizon-archive/posts/` before building, and refreshes that directory on every publish — without it, older digest pages (and every list on the index page) would vanish on the next run.
+
 To use GitHub Pages, enable Pages for the repository and run the scheduled workflow or trigger it manually. The generated site is built from the `docs/` directory.
 
 ## MCP Server
