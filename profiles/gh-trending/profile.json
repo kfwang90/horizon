@@ -2,8 +2,8 @@
   "id": "gh-trending",
   "name": "GitHub Trending",
   "display_names": {
-    "zh": "GitHub 热点项目",
-    "en": "GitHub Trending"
+    "zh": "GitHub AI 开发工具",
+    "en": "AI Dev Tools"
   },
   "match": "match.md",
   "analysis": "analysis.md",

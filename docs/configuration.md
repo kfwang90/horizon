@@ -357,11 +357,22 @@ for validation and fallback rules.
         "repo": "cpython",
         "enabled": true,
         "category": "oss"
+      },
+      {
+        "type": "search",
+        "query": "topic:coding-agent stars:>100 pushed:>{since_date}",
+        "sort": "stars",
+        "max_items": 5,
+        "enabled": true,
+        "category": "gh-trending",
+        "profile": "gh-trending"
       }
     ]
   }
 }
 ```
+
+`search` sources accept `query` (any GitHub repository search query), `sort` (`stars`, `forks`, `updated`, `best-match`) and `max_items`. The placeholders `{today}`, `{since_date}` and `{days_N}` are expanded at fetch time, so relative windows stay current.
 
 ### Hacker News
 

@@ -19,15 +19,15 @@
     "default_profile": "ai-news",
     "profile_settings": {
       "gh-trending": {
-        "threshold": 0.0,
+        "threshold": 5.0,
         "topic_dedup": true
       },
       "ai-news": {
-        "threshold": 0.0,
+        "threshold": 6.0,
         "topic_dedup": true
       },
       "social-hot": {
-        "threshold": 0.0,
+        "threshold": 6.0,
         "topic_dedup": false
       },
       "tech-news": {
@@ -58,6 +58,60 @@
         "profile": "gh-trending"
       },
       {
+        "type": "search",
+        "query": "topic:coding-agent stars:>100 pushed:>{since_date}",
+        "sort": "stars",
+        "max_items": 5,
+        "enabled": true,
+        "category": "gh-trending",
+        "profile": "gh-trending"
+      },
+      {
+        "type": "search",
+        "query": "topic:coding-assistant stars:>100 pushed:>{days_30}",
+        "sort": "stars",
+        "max_items": 5,
+        "enabled": true,
+        "category": "gh-trending",
+        "profile": "gh-trending"
+      },
+      {
+        "type": "search",
+        "query": "topic:mcp-server stars:>200 pushed:>{since_date}",
+        "sort": "stars",
+        "max_items": 4,
+        "enabled": true,
+        "category": "gh-trending",
+        "profile": "gh-trending"
+      },
+      {
+        "type": "search",
+        "query": "\"ai code review\" in:name,description stars:>100 pushed:>{days_30}",
+        "sort": "stars",
+        "max_items": 4,
+        "enabled": true,
+        "category": "gh-trending",
+        "profile": "gh-trending"
+      },
+      {
+        "type": "search",
+        "query": "\"test generation\" ai in:description stars:>30 pushed:>{days_30}",
+        "sort": "stars",
+        "max_items": 3,
+        "enabled": true,
+        "category": "gh-trending",
+        "profile": "gh-trending"
+      },
+      {
+        "type": "search",
+        "query": "topic:agentic-coding created:>{days_30}",
+        "sort": "stars",
+        "max_items": 4,
+        "enabled": true,
+        "category": "gh-trending",
+        "profile": "gh-trending"
+      },
+      {
         "type": "repo_releases",
         "owner": "vllm-project",
         "repo": "vllm",
@@ -77,20 +131,6 @@
       {
         "name": "TechCrunch AI",
         "url": "https://techcrunch.com/category/artificial-intelligence/feed/",
-        "enabled": true,
-        "category": "ai-news",
-        "profile": "ai-news"
-      },
-      {
-        "name": "The Verge AI",
-        "url": "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml",
-        "enabled": true,
-        "category": "ai-news",
-        "profile": "ai-news"
-      },
-      {
-        "name": "MIT Technology Review AI",
-        "url": "https://www.technologyreview.com/topic/artificial-intelligence/feed/",
         "enabled": true,
         "category": "ai-news",
         "profile": "ai-news"
@@ -150,6 +190,27 @@
         "enabled": true,
         "category": "ai-news",
         "profile": "ai-news"
+      },
+      {
+        "name": "InfoQ 中文",
+        "url": "https://www.infoq.cn/feed",
+        "enabled": true,
+        "category": "ai-news",
+        "profile": "ai-news"
+      },
+      {
+        "name": "极客公园",
+        "url": "https://www.geekpark.net/rss",
+        "enabled": true,
+        "category": "ai-news",
+        "profile": "ai-news"
+      },
+      {
+        "name": "爱范儿",
+        "url": "https://www.ifanr.com/feed",
+        "enabled": true,
+        "category": "ai-news",
+        "profile": "ai-news"
       }
     ],
     "reddit": {
@@ -175,14 +236,14 @@
       "actor_id": "altimis~scweet",
       "apify_token_env": "APIFY_TOKEN",
       "users": [
+        "simonw",
+        "swyx",
+        "_akhaliq",
+        "hwchase17",
         "karpathy",
-        "sama",
-        "AnthropicAI",
-        "GoogleDeepMind",
-        "OpenAI",
-        "ylecun",
-        "DrJimFan",
-        "huggingface"
+        "rasbt",
+        "tom_doerr",
+        "mervenoyann"
       ],
       "keywords": [],
       "fetch_limit": 100,
@@ -203,11 +264,7 @@
       "profile": "social-hot",
       "channels": [
         {
-          "channel": "@TwoMinutePapers",
-          "enabled": true
-        },
-        {
-          "channel": "@mreflow",
+          "channel": "@matthew_berman",
           "enabled": true
         },
         {
@@ -215,15 +272,27 @@
           "enabled": true
         },
         {
-          "channel": "@matthew_berman",
+          "channel": "@indydevdan",
           "enabled": true
         },
         {
-          "channel": "@aiexplained-official",
+          "channel": "@ColeMedin",
           "enabled": true
         },
         {
-          "channel": "@bycloudAI",
+          "channel": "@1littlecoder",
+          "enabled": true
+        },
+        {
+          "channel": "@developersdigest",
+          "enabled": true
+        },
+        {
+          "channel": "@daveebbelaar",
+          "enabled": true
+        },
+        {
+          "channel": "@TwoMinutePapers",
           "enabled": true
         }
       ]
@@ -257,7 +326,7 @@
     ],
     "category_groups": {
       "gh-trending": {
-        "name": "GitHub 热点项目",
+        "name": "GitHub AI 开发工具",
         "categories": [
           "gh-trending"
         ]

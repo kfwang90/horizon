@@ -43,11 +43,16 @@ Uses the [GitHub REST API](https://api.github.com):
 
 - `GET /users/{username}/events/public` — user activity events
 - `GET /repos/{owner}/{repo}/releases` — repository releases
+- `GET /search/repositories` — repository search
 
-Two source types are supported:
+Four source types are supported:
 
 - **`user_events`** — tracks push, create, release, public, and watch events for a user
 - **`repo_releases`** — tracks new releases for a specific repository
+- **`trending`** — scrapes the public `github.com/trending` leaderboard (no token needed). Uses `since` (`daily`/`weekly`/`monthly`) and `languages` (GitHub language slugs such as `python`; an empty list means all languages).
+- **`search`** — queries the repository search API with `query`. Use it to track a topic over time, for example AI tools that improve development efficiency or code quality.
+
+**Relative dates in `search` queries**: `{today}`, `{since_date}` (the start of the run window) and `{days_N}` (N days before now) are expanded at fetch time, so a query such as `topic:mcp-server stars:>200 pushed:>{since_date}` keeps working without editing the config. Sort with `stars`, `forks`, `updated`, or `best-match`.
 
 **Config** (`sources.github`, list of entries):
 
@@ -70,9 +75,22 @@ Two source types are supported:
 }
 ```
 
-- `category` — optional tag for balanced digest grouping; set per source entry
+```json
+{
+  "type": "search",
+  "query": "topic:coding-agent stars:>100 pushed:>{since_date}",
+  "sort": "stars",
+  "max_items": 5,
+  "enabled": true,
+  "category": "gh-trending",
+  "profile": "gh-trending"
+}
+```
 
-**Authentication**: Set `GITHUB_TOKEN` in your environment for higher rate limits (5000 req/hr vs 60 without).
+- `category` — optional tag for balanced digest grouping; set per source entry
+- `max_items` — cap on items per source entry (`trending` and `search`)
+
+**Authentication**: Set `GITHUB_TOKEN` in your environment for higher rate limits (5000 req/hr vs 60 without). Search has a much tighter unauthenticated budget (10 requests/minute), so a token is strongly recommended when configuring several `search` entries.
 
 ## RSS
 

@@ -3,7 +3,7 @@
 import logging
 import os
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 import httpx
@@ -77,6 +77,9 @@ class GitHubScraper(BaseScraper):
             elif source.type == "trending":
                 trending_items = await self._fetch_trending(source)
                 items.extend(trending_items)
+            elif source.type == "search" and source.query:
+                search_items = await self._fetch_search(source, since)
+                items.extend(search_items)
 
         return items
 
@@ -127,6 +130,122 @@ class GitHubScraper(BaseScraper):
         if source.max_items:
             items = items[: source.max_items]
         return items
+
+    async def _fetch_search(
+        self, source: GitHubSourceConfig, since: datetime
+    ) -> List[ContentItem]:
+        """Search repositories through the GitHub search API.
+
+        `source.query` may contain `{since_date}` (the start of the run window)
+        and `{days_N}` (N days before now), which are expanded at fetch time so
+        relative windows such as `pushed:>{since_date}` stay current.
+
+        Results are dated "now" like the trending page: a search hit is news for
+        the day it surfaced, whereas the repository's own `pushed_at` would drop
+        long-lived projects from the run window.
+        """
+        query = self._expand_query(source.query or "", since)
+        if not query:
+            return []
+
+        params = {"q": query, "per_page": str(min(source.max_items or 20, 100))}
+        sort = (source.sort or "").strip().lower()
+        if sort and sort != "best-match":
+            params["sort"] = sort
+            params["order"] = "desc"
+
+        try:
+            response = await self.client.get(
+                f"{self.base_url}/search/repositories",
+                headers=self._get_headers(),
+                params=params,
+            )
+            response.raise_for_status()
+            payload = response.json()
+        except httpx.HTTPStatusError as e:
+            body = (e.response.text or "").strip().replace("\n", " ")[:200]
+            logger.warning("GitHub search rejected (%s): %s %s", query, e, body)
+            return []
+        except (httpx.HTTPError, ValueError) as e:
+            logger.warning("Error searching GitHub repositories (%s): %s", query, e)
+            return []
+
+        items: List[ContentItem] = []
+        for repo in payload.get("items") or []:
+            if not isinstance(repo, dict):
+                continue
+            full_name = repo.get("full_name") or ""
+            if "/" not in full_name:
+                continue
+            items.append(self._search_item(full_name, repo, source))
+
+        return items
+
+    @staticmethod
+    def _expand_query(query: str, since: datetime) -> str:
+        """Expand `{today}`, `{since_date}` and `{days_N}` in a search query."""
+        now = datetime.now(timezone.utc)
+        expanded = query.replace("{today}", now.date().isoformat())
+        expanded = expanded.replace(
+            "{since_date}", since.astimezone(timezone.utc).date().isoformat()
+        )
+
+        def _replace_days(match: re.Match) -> str:
+            days = int(match.group(1))
+            return (now - timedelta(days=days)).date().isoformat()
+
+        return re.sub(r"\{days_(\d+)\}", _replace_days, expanded).strip()
+
+    @staticmethod
+    def _search_content(repo: str, meta: dict) -> str:
+        lines = [f"Repository: {repo}"]
+        if meta.get("description"):
+            lines.append(f"Description: {meta['description']}")
+        if meta.get("language"):
+            lines.append(f"Primary language: {meta['language']}")
+        if meta.get("topics"):
+            lines.append(f"Topics: {', '.join(meta['topics'][:12])}")
+        lines.append(
+            f"Stars: {meta.get('stars_total', 0)} (forks {meta.get('forks_total', 0)}, "
+            f"open issues {meta.get('open_issues', 0)})"
+        )
+        if meta.get("created_at"):
+            lines.append(f"Created: {str(meta['created_at'])[:10]}")
+        if meta.get("pushed_at"):
+            lines.append(f"Last pushed: {str(meta['pushed_at'])[:10]}")
+        if meta.get("search_query"):
+            lines.append(f"Matched query: {meta['search_query']}")
+        return "\n".join(lines)
+
+    def _search_item(
+        self, repo: str, payload: dict, source: GitHubSourceConfig
+    ) -> ContentItem:
+        """Build a ContentItem from one repository search result."""
+        metadata = {
+            "repo": repo,
+            "search_query": source.query or "",
+            "language": payload.get("language") or "",
+            "stars_total": payload.get("stargazers_count") or 0,
+            "forks_total": payload.get("forks_count") or 0,
+            "open_issues": payload.get("open_issues_count") or 0,
+            "topics": payload.get("topics") or [],
+            "created_at": payload.get("created_at") or "",
+            "pushed_at": payload.get("pushed_at") or "",
+            "description": payload.get("description") or "",
+            "homepage": payload.get("homepage") or "",
+            "category": source.category,
+        }
+        return ContentItem(
+            id=self._generate_id("github", "search", repo),
+            source_type=SourceType.GITHUB,
+            title=repo,
+            url=payload.get("html_url") or f"https://github.com/{repo}",
+            content=self._search_content(repo, metadata),
+            author=repo.split("/")[0],
+            published_at=datetime.now(timezone.utc),
+            profile=source.profile,
+            metadata=metadata,
+        )
 
     async def _fetch_trending_page(
         self, language: str, since: str

@@ -225,9 +225,13 @@ class GitHubSourceConfig(BaseModel):
     - `trending` — the github.com/trending leaderboard. Uses `since`
       (`daily`/`weekly`/`monthly`) and `languages` (GitHub language slugs such
       as `python`; an empty list means all languages). No credentials needed.
+    - `search` — the repository search API, driven by `query`. The placeholders
+      `{since_date}` and `{days_N}` are expanded at fetch time so a relative
+      window such as `pushed:>{since_date}` stays current without editing the
+      config. `sort` picks the ordering.
     """
 
-    type: str  # "user_events", "repo_releases", "trending"
+    type: str  # "user_events", "repo_releases", "trending", "search"
     username: Optional[str] = None
     owner: Optional[str] = None
     repo: Optional[str] = None
@@ -237,6 +241,9 @@ class GitHubSourceConfig(BaseModel):
     # type == "trending" only
     since: str = "daily"  # daily, weekly, monthly
     languages: List[str] = Field(default_factory=list)  # e.g. ["python"]
+    # type == "search" only
+    query: Optional[str] = None  # e.g. "topic:mcp-server stars:>100 pushed:>{since_date}"
+    sort: str = "stars"  # stars, forks, updated, best-match
     max_items: Optional[int] = None
 
 
