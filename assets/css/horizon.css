@@ -74,6 +74,59 @@
 
 .post-detail details > ul li { margin-bottom: 4px; }
 
+/* ===== 条目分页：默认显示 8 条，点「显示更多」每次展开 5 条 ===== */
+.hz-item.hz-hidden { display: none; }
+
+.hz-more {
+  display: block;
+  width: 100%;
+  margin: 18px 0 4px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-card);
+  color: var(--fg-muted);
+  font-family: var(--mono);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color .2s, color .2s;
+}
+
+.hz-more:hover { border-color: var(--accent); color: var(--fg); }
+
+/* ===== 折叠的目录（默认收起，展开全部条目后页面依然简洁）===== */
+.hz-toc {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  margin: 0 0 24px;
+}
+
+.hz-toc > summary {
+  cursor: pointer;
+  padding: 8px 14px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--fg-muted);
+}
+
+.hz-toc > summary:hover { color: var(--fg); }
+
+.hz-toc > p {
+  margin: 0;
+  padding: 10px 14px 0;
+  font-size: 13px;
+  color: var(--fg);
+}
+
+.hz-toc > ol {
+  margin: 0;
+  padding: 4px 14px 8px 34px;
+  font-size: 13.5px;
+}
+
+.hz-toc > ol li { margin-bottom: 2px; }
+
 /* ===== 首页的中英切换（由 horizon.js 插入到 body 顶部，固定导航下方）===== */
 .lang-toggle {
   position: fixed;

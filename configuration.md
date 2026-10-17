@@ -620,9 +620,11 @@ digest limits:
   When empty or omitted, sections follow their first appearance in the selected
   items. Unknown or duplicate IDs are rejected. The example prioritizes the
   three listed profiles in that order.
-- `category_groups`: Optional map of quota groups. Each group requires a positive
-  `limit` and a non-empty `categories` list. Items within each group are kept by
-  analysis score, highest first.
+- `category_groups`: Optional map of quota groups. Each group needs a non-empty
+  `categories` list and an optional positive `limit`. Items within each group are
+  kept by analysis score, highest first. Omitting `limit` (or setting it to
+  `null`) keeps every item in that group — that is how the daily digest shows all
+  fetched content instead of a curated top-N.
 - `category_groups.*.name`: Optional display name used in run logs
 - `default_group`: Group key for items whose category does not match any
   configured group. Default is `other`.
