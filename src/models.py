@@ -599,7 +599,11 @@ class CategoryGroupConfig(BaseModel):
     """A quota group containing one or more source categories."""
 
     name: Optional[str] = None
-    limit: int = Field(gt=0)
+    limit: Optional[int] = Field(
+        default=None,
+        gt=0,
+        description="Maximum number of items kept for this group. None means unlimited.",
+    )
     categories: List[str] = Field(min_length=1)
 
 

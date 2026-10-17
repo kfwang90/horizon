@@ -957,9 +957,12 @@ class HorizonOrchestrator:
             )
             for group_key, group in groups.items():
                 label = group.name or group_key
+                group_limit_label = (
+                    str(group.limit) if group.limit is not None else "unlimited"
+                )
                 self.console.print(
                     f"      {self.icons['detail']} {label}: "
-                    f"{final_counts.get(group_key, 0)}/{group.limit}"
+                    f"{final_counts.get(group_key, 0)}/{group_limit_label}"
                 )
             if (
                 final_counts.get(default_group, 0)

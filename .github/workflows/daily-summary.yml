@@ -9,7 +9,9 @@ on:
 jobs:
   daily-summary:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # The digest now includes every fetched item, so enrichment runs on all of
+    # them; give the run more headroom than a curated top-N would need.
+    timeout-minutes: 120
     # Never let two runs push source/horizon at the same time; queue them instead.
     concurrency:
       group: daily-summary

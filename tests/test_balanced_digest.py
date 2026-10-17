@@ -101,6 +101,34 @@ def test_category_groups_apply_limits_and_default_group_limit() -> None:
     assert result.group_counts == {"other": 1, "ai": 2, "finance": 1}
 
 
+def test_category_groups_without_limit_keep_every_item() -> None:
+    """A group with limit=None (or omitted) never truncates its category."""
+    filtering = DigestConfig(
+        category_groups={
+            "ai": CategoryGroupConfig(categories=["ai"]),
+            "finance": CategoryGroupConfig(categories=["finance"]),
+        },
+    )
+    items = [
+        make_item("ai-low", 3.0, "ai"),
+        make_item("finance", 6.0, "finance"),
+        make_item("other", 9.5, "world"),
+        make_item("ai-high", 9.0, "ai"),
+        make_item("ai-mid", 7.0, "ai"),
+    ]
+
+    result = make_orchestrator(filtering).apply_balanced_digest(items)
+
+    assert [item.id for item in result.items] == [
+        "other",
+        "ai-high",
+        "ai-mid",
+        "finance",
+        "ai-low",
+    ]
+    assert result.group_counts == {"ai": 3, "finance": 1, "other": 1}
+
+
 def test_max_items_applies_after_group_limits() -> None:
     filtering = DigestConfig(
         max_items=2,

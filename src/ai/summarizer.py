@@ -55,7 +55,7 @@ LABELS = {
         "discussion": "Discussion",
         "references": "References",
         "tags": "Tags",
-        "selected_items": "From {total} items, {selected} important content pieces were selected",
+        "selected_items": "Showing {selected} of {total} fetched items.",
         "empty_analyzed": "Analyzed {total} items, but none met the importance threshold.",
         "empty_body": (
             "No significant developments today. This might indicate:\n"
@@ -75,7 +75,7 @@ LABELS = {
         "discussion": "社区讨论",
         "references": "参考链接",
         "tags": "标签",
-        "selected_items": "从 {total} 条内容中筛选出 {selected} 条重要资讯。",
+        "selected_items": "今日抓取 {total} 条内容，收录 {selected} 条。",
         "empty_analyzed": "已分析 {total} 条内容，但没有达到重要性阈值的条目。",
         "empty_body": (
             "今日暂无重要动态，可能原因：\n"

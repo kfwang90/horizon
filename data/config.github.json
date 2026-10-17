@@ -19,15 +19,15 @@
     "default_profile": "ai-news",
     "profile_settings": {
       "gh-trending": {
-        "threshold": 5.0,
+        "threshold": 0.0,
         "topic_dedup": true
       },
       "ai-news": {
-        "threshold": 6.5,
+        "threshold": 0.0,
         "topic_dedup": true
       },
       "social-hot": {
-        "threshold": 6.0,
+        "threshold": 0.0,
         "topic_dedup": false
       },
       "tech-news": {
@@ -258,28 +258,25 @@
     "category_groups": {
       "gh-trending": {
         "name": "GitHub 热点项目",
-        "limit": 8,
         "categories": [
           "gh-trending"
         ]
       },
       "ai-news": {
         "name": "AI 热门新闻",
-        "limit": 8,
         "categories": [
           "ai-news"
         ]
       },
       "social-hot": {
         "name": "X / YouTube 热门",
-        "limit": 8,
         "categories": [
           "social-hot"
         ]
       }
     },
     "default_group": "other",
-    "default_group_limit": 8
+    "default_group_limit": null
   },
   "webhook": {
     "enabled": true,
