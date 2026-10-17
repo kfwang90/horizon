@@ -171,6 +171,52 @@
 .rss-icon:hover { opacity: 1; color: var(--fg); }
 .rss-icon svg { width: .9em; height: .9em; display: inline-block; }
 
+/* ===== 首页「近期消息」：最近一周的条目，按天折叠 ===== */
+.hz-recent-hint {
+  font-size: 14px;
+  color: var(--fg-muted);
+  margin: -2px 0 16px;
+}
+
+.hz-recent-day {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  padding: 0 14px;
+}
+
+.hz-recent-day > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 10px 0;
+  font-family: var(--mono);
+  font-size: 14px;
+}
+
+.hz-recent-day > summary::-webkit-details-marker { display: none; }
+
+.hz-recent-day > summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 8px;
+  opacity: .55;
+  transition: transform .15s;
+}
+
+.hz-recent-day[open] > summary::before { transform: rotate(90deg); }
+.hz-recent-day[open] > summary { border-bottom: 1px solid var(--border); }
+.hz-recent-day > summary:hover { color: var(--accent); }
+
+.hz-recent-list { margin: 12px 0; padding-left: 18px; }
+.hz-recent-list li { margin-bottom: 7px; line-height: 1.7; }
+
+.hz-recent-meta {
+  font-size: 12.5px;
+  color: var(--fg-muted);
+  margin-left: 6px;
+  white-space: nowrap;
+}
+
 /* ===== 响应式 ===== */
 @media (max-width: 720px) {
   .lang-toggle { top: 68px; right: 12px; }

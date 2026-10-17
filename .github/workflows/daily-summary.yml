@@ -79,6 +79,38 @@ jobs:
         run: echo "DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
       # ------------------------------------------------------------------
+      # docs/_posts is git-ignored, so a fresh runner only has today's
+      # digest. Restore the previously published ones from the deploy repo's
+      # .horizon-archive/posts/ before building: otherwise the index page's
+      # 每日速递 / 近期消息 lists (and every older digest page) vanish.
+      # ------------------------------------------------------------------
+      - name: Restore digest history from the deploy repo
+        env:
+          PAGES_DEPLOY_TOKEN: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+          TARGET_REPO: ${{ vars.PAGES_REPO || format('{0}/{0}.github.io', github.repository_owner) }}
+        run: |
+          set -euo pipefail
+          SITE_DIR="${{ runner.temp }}/horizon-site"
+          if [ -z "${PAGES_DEPLOY_TOKEN}" ]; then
+            echo "::warning::PAGES_DEPLOY_TOKEN is not set; building today's digest only."
+            exit 0
+          fi
+          rm -rf "$SITE_DIR"
+          if ! git clone \
+            "https://x-access-token:${PAGES_DEPLOY_TOKEN}@github.com/${TARGET_REPO}.git" \
+            "$SITE_DIR"; then
+            echo "::warning::could not clone ${TARGET_REPO}; building without history."
+            exit 0
+          fi
+          if [ -d "$SITE_DIR/.horizon-archive/posts" ]; then
+            # -n keeps today's freshly generated post.
+            cp -n "$SITE_DIR"/.horizon-archive/posts/*.md docs/_posts/ || true
+            echo "Restored digest history: $(ls -1 docs/_posts | wc -l) file(s)."
+          else
+            echo "No archive yet; history starts with this run."
+          fi
+
+      # ------------------------------------------------------------------
       # Publish the daily report into the existing Hexo site:
       #   https://www.01040610.xyz/horizon/   (custom domain; the
       #   kfwang90.github.io URL 301-redirects here)
@@ -109,7 +141,7 @@ jobs:
           source: ./docs
           destination: ./docs/_site
 
-      - name: Publish into the Hexo repo (source/horizon only)
+      - name: Publish into the Hexo repo (source/horizon + history archive)
         env:
           PAGES_DEPLOY_TOKEN: ${{ secrets.PAGES_DEPLOY_TOKEN }}
           # Target repo. Defaults to <owner>/<owner>.github.io
@@ -118,23 +150,37 @@ jobs:
           TARGET_REPO: ${{ vars.PAGES_REPO || format('{0}/{0}.github.io', github.repository_owner) }}
         run: |
           set -euo pipefail
-          WORK="$(mktemp -d)"
-          git clone --depth 1 \
-            "https://x-access-token:${PAGES_DEPLOY_TOKEN}@github.com/${TARGET_REPO}.git" \
-            "$WORK/site"
+          SITE_DIR="${{ runner.temp }}/horizon-site"
+          if [ ! -d "$SITE_DIR/.git" ]; then
+            rm -rf "$SITE_DIR"
+            git clone \
+              "https://x-access-token:${PAGES_DEPLOY_TOKEN}@github.com/${TARGET_REPO}.git" \
+              "$SITE_DIR"
+          fi
 
           # Replace only source/horizon; never touch anything else.
-          rm -rf "$WORK/site/source/horizon"
-          mkdir -p "$WORK/site/source/horizon"
-          cp -a docs/_site/. "$WORK/site/source/horizon/"
+          rm -rf "$SITE_DIR/source/horizon"
+          mkdir -p "$SITE_DIR/source/horizon"
+          cp -a docs/_site/. "$SITE_DIR/source/horizon/"
 
-          cd "$WORK/site"
+          # Keep the digest markdown (each post carries its item list) so the
+          # next run can rebuild the last week. Kept outside source/ so Hexo
+          # never publishes it.
+          mkdir -p "$SITE_DIR/.horizon-archive/posts"
+          find docs/_posts -maxdepth 1 -name '*.md' \
+            -exec cp -f {} "$SITE_DIR/.horizon-archive/posts/" \;
+
+          cd "$SITE_DIR"
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A source/horizon
+          git add -A source/horizon .horizon-archive
           if git diff --cached --quiet; then
             echo "No changes to publish."
           else
             git commit -m "📝 Horizon daily: ${DATE}"
-            git push origin HEAD:main
+            if ! git push origin HEAD:main; then
+              echo "Push rejected; rebasing on the remote and retrying once."
+              git pull --rebase origin main
+              git push origin HEAD:main
+            fi
           fi

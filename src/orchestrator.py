@@ -14,6 +14,7 @@ from .console_icons import get_icons
 from .models import Config, ContentItem
 from .storage.manager import StorageManager, safe_output_path
 from .services.email import EmailManager
+from .services.pages import post_front_matter, recent_items
 from .services.webhook import WebhookNotifier
 from .services.wechat import WeChatNotifier
 from .scrapers.github import GitHubScraper
@@ -324,14 +325,12 @@ class HorizonOrchestrator:
 
                     dest_path = safe_output_path(posts_dir, post_filename)
 
-                    # Add Jekyll front matter
-                    front_matter = (
-                        "---\n"
-                        "layout: default\n"
-                        f"title: \"Horizon Summary: {today} ({lang.upper()})\"\n"
-                        f"date: {today}\n"
-                        f"lang: {lang}\n"
-                        "---\n\n"
+                    # Add Jekyll front matter, including this digest's item
+                    # list so the index page can show the last week.
+                    front_matter = post_front_matter(
+                        today,
+                        lang,
+                        recent_items(summarizer.build_view(important_items, lang)),
                     )
 
                     # Strip leading H1 header to avoid duplication with Jekyll title
