@@ -171,6 +171,16 @@
 .rss-icon:hover { opacity: 1; color: var(--fg); }
 .rss-icon svg { width: .9em; height: .9em; display: inline-block; }
 
+/* ===== 目录/首页链接跳过来的条目：短暂高亮，方便找到落点 ===== */
+.hz-flash {
+  animation: hz-flash 1.6s ease-out;
+}
+
+@keyframes hz-flash {
+  from { background: var(--border); }
+  to { background: transparent; }
+}
+
 /* ===== 首页「近期消息」：最近一周的条目，按天折叠 ===== */
 .hz-recent-hint {
   font-size: 14px;
