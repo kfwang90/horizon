@@ -44,6 +44,9 @@
   var INITIAL_ITEMS = 8;
   var ITEMS_PER_EXPAND = 5;
 
+  /** 各板块的分页状态，用于锚点跳转时先把被折叠的条目展开 */
+  var sectionStates = [];
+
   function isZhPage() {
     return (document.documentElement.lang || '').toLowerCase().indexOf('zh') === 0;
   }
@@ -154,19 +157,95 @@
         last.parentNode.insertBefore(button, last.nextSibling);
       }
 
-      button.addEventListener('click', function () {
-        var target = Math.min(visible + ITEMS_PER_EXPAND, wrappers.length);
-        for (var index = visible; index < target; index += 1) {
-          wrappers[index].classList.remove('hz-hidden');
-        }
-        visible = target;
+      /** 只展开到 count 条；分页按钮与锚点跳转共用 */
+      function show(count) {
+        visible = Math.min(Math.max(count, INITIAL_ITEMS), wrappers.length);
+        wrappers.forEach(function (wrapper, index) {
+          wrapper.classList.toggle('hz-hidden', index >= visible);
+        });
         render();
+      }
+
+      button.addEventListener('click', function () {
+        show(visible + ITEMS_PER_EXPAND);
       });
 
-      wrappers.forEach(function (wrapper, index) {
-        if (index >= INITIAL_ITEMS) wrapper.classList.add('hz-hidden');
+      show(INITIAL_ITEMS);
+
+      sectionStates.push({
+        wrapperIndex: function (node) {
+          for (var index = 0; index < wrappers.length; index += 1) {
+            if (wrappers[index].contains(node)) return index;
+          }
+          return -1;
+        },
+        revealIndex: function (index) {
+          if (index < visible) return false;
+          show(index + 1);
+          return true;
+        },
       });
-      render();
+    });
+  }
+
+  /**
+   * 目录里的链接、以及从首页「近期消息」带 #item-... 打开的链接，都可能指向
+   * 被折叠（display:none）的条目：浏览器对这种情况不会滚动，表现为「点了没反应」。
+   * 这里先把那一条展开，再滚动并短暂高亮。
+   */
+  function anchorTarget(hash) {
+    if (!hash || hash.charAt(0) !== '#' || hash.length < 2) return null;
+    var id = hash.slice(1);
+    try {
+      id = decodeURIComponent(id);
+    } catch (error) {
+      return null;
+    }
+    var target = document.getElementById(id);
+    return target && target.tagName === 'A' ? target : null;
+  }
+
+  function flash(target) {
+    var anchorParagraph = target.parentNode;
+    var heading = anchorParagraph && anchorParagraph.nextElementSibling;
+    var nodes = [anchorParagraph];
+    if (heading && heading.tagName === 'H3') nodes.push(heading);
+    nodes.forEach(function (node) {
+      if (node && node.classList) node.classList.add('hz-flash');
+    });
+    window.setTimeout(function () {
+      nodes.forEach(function (node) {
+        if (node && node.classList) node.classList.remove('hz-flash');
+      });
+    }, 1600);
+  }
+
+  function revealAnchor(target) {
+    if (!target) return false;
+    var inPaginatedSection = false;
+    var expanded = false;
+    sectionStates.forEach(function (state) {
+      var index = state.wrapperIndex(target);
+      if (index < 0) return;
+      inPaginatedSection = true;
+      if (state.revealIndex(index)) expanded = true;
+    });
+    if (!inPaginatedSection) return false;
+    // 只有真的展开过才需要我们滚动；否则交给浏览器自己的锚点跳转
+    if (expanded && typeof target.scrollIntoView === 'function') {
+      target.scrollIntoView();
+    }
+    flash(target);
+    return true;
+  }
+
+  /** 捕获页内锚点点击（不阻止默认跳转，只负责把目标展开） */
+  function setupAnchorLinks() {
+    document.addEventListener('click', function (event) {
+      var link = event.target;
+      while (link && link.tagName !== 'A') link = link.parentNode;
+      if (!link || !link.getAttribute) return;
+      revealAnchor(anchorTarget(link.getAttribute('href') || ''));
     });
   }
 
@@ -180,6 +259,8 @@
     var text = uiText();
     collapseToc(root, text);
     paginateSections(root, text);
+    // 带着 #item-... 打开时，目标条目可能刚被折叠起来
+    revealAnchor(anchorTarget(window.location.hash));
   }
 
   /** Set up EN/中文 language toggle as a page-level control */
@@ -269,6 +350,7 @@
     processScoreBadges();
     markSemanticElements();
     setupDigestLayout();
+    setupAnchorLinks();
     setupLanguageToggle();
   });
 })();
