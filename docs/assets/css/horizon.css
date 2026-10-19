@@ -44,9 +44,22 @@
   margin: 28px 0;
 }
 
-/* 每条正文前会有一个只含锚点的空段落（<p><a id="item-1"></a></p>），
-   隐藏它，避免标题上方多出一段空白。老浏览器不支持 :has 时保持原样。 */
-.post-detail p:has(> a:not([href]):only-child) { display: none; }
+/* 每条正文前会有一个只含锚点的空段落（<p><a id="item-1"></a></p>）。
+   注意：不能整段 display:none —— 那样锚点就没有盒子，浏览器滚不到它，
+   目录里的链接点了没反应。这里只把它压扁成 0 高度，既不占位置，
+   又能让锚点跳转落在条目开头（scroll-margin-top 给吸顶导航留出高度）。
+   老浏览器不支持 :has 时保持原样。 */
+.post-detail p:has(> a:not([href]):only-child) {
+  margin: 0;
+  height: 0;
+  line-height: 0;
+  font-size: 0;
+  scroll-margin-top: 96px;
+}
+
+/* 目录/「近期消息」跳转时的落点：留出吸顶导航的高度 */
+.post-detail .hz-item { scroll-margin-top: 96px; }
+.post-detail h3 { scroll-margin-top: 96px; }
 
 /* ===== 折叠的「参考链接」 ===== */
 .post-detail details {

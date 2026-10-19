@@ -220,32 +220,80 @@
     }, 1600);
   }
 
+  /** 滚动落点：优先用条目标题（锚点段落本身高度为 0，视觉上落在这里更自然） */
+  function scrollTargetFor(target) {
+    var paragraph = target.parentNode;
+    var heading = paragraph && paragraph.nextElementSibling;
+    if (heading && heading.tagName === 'H3') return heading;
+    var wrapper = target.closest ? target.closest('.hz-item') : null;
+    return wrapper || target;
+  }
+
+  function scrollToNode(node) {
+    if (!node || typeof node.scrollIntoView !== 'function') return;
+    node.scrollIntoView({ block: 'start' });
+    // 展开条目后按钮位置会再变一次布局，下一帧再校正一遍落点
+    if (typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(function () {
+        node.scrollIntoView({ block: 'start' });
+      });
+    }
+  }
+
   function revealAnchor(target) {
     if (!target) return false;
     var inPaginatedSection = false;
-    var expanded = false;
     sectionStates.forEach(function (state) {
       var index = state.wrapperIndex(target);
       if (index < 0) return;
       inPaginatedSection = true;
-      if (state.revealIndex(index)) expanded = true;
+      state.revealIndex(index);
     });
-    if (!inPaginatedSection) return false;
-    // 只有真的展开过才需要我们滚动；否则交给浏览器自己的锚点跳转
-    if (expanded && typeof target.scrollIntoView === 'function') {
-      target.scrollIntoView();
-    }
+    // 没被分页的板块也要自己滚（点击已被 preventDefault 接管）
+    scrollToNode(scrollTargetFor(target));
     flash(target);
-    return true;
+    return inPaginatedSection;
   }
 
-  /** 捕获页内锚点点击（不阻止默认跳转，只负责把目标展开） */
+  /**
+   * 页内锚点跳转自己接管：目标条目可能刚被展开，交给浏览器默认行为不保险
+   * （锚点段落被折叠时没有盒子，浏览器不会滚动）。滚动 + 写入 hash 都在这里做。
+   */
+  function handleAnchorClick(event) {
+    var link = event.target;
+    while (link && link.tagName !== 'A') link = link.parentNode;
+    if (!link || !link.getAttribute) return;
+    var href = link.getAttribute('href') || '';
+    var target = anchorTarget(href);
+    if (!target) return;
+    event.preventDefault();
+    revealAnchor(target);
+    if (window.history && window.history.pushState) {
+      window.history.pushState(null, '', href);
+    }
+  }
+
+  /** 捕获页内锚点点击，并处理直接改地址栏 / 前进后退带来的 hash 变化 */
   function setupAnchorLinks() {
-    document.addEventListener('click', function (event) {
-      var link = event.target;
-      while (link && link.tagName !== 'A') link = link.parentNode;
-      if (!link || !link.getAttribute) return;
-      revealAnchor(anchorTarget(link.getAttribute('href') || ''));
+    document.addEventListener('click', handleAnchorClick);
+    window.addEventListener('hashchange', function () {
+      revealAnchor(anchorTarget(window.location.hash));
+    });
+  }
+
+  /**
+   * 新标签页打开：
+   * - 日报正文里的条目标题、「参考链接」都是外链，别把日报顶掉；
+   * - 首页「近期消息」的标题同理，留着列表继续翻。
+   */
+  function setupOpenInNewTab() {
+    var root = document.querySelector('.main-content');
+    if (!root) return;
+    var selectors = ['.hz-recent-list a[href]'];
+    if (root.querySelector('a[id^="item-"]')) selectors.push('a[href^="http"]');
+    root.querySelectorAll(selectors.join(', ')).forEach(function (link) {
+      link.setAttribute('target', '_blank');
+      link.setAttribute('rel', 'noopener');
     });
   }
 
@@ -351,6 +399,7 @@
     markSemanticElements();
     setupDigestLayout();
     setupAnchorLinks();
+    setupOpenInNewTab();
     setupLanguageToggle();
   });
 })();
