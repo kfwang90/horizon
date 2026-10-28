@@ -88,9 +88,9 @@ jobs:
         env:
           # data/config.github.json uses ai.api_key_env = OPENROUTER_API_KEY
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          # Model id (ai.model = ${HORIZON_AI_MODEL}); override via repo variable
-          # HORIZON_AI_MODEL, otherwise falls back to the default below.
-          HORIZON_AI_MODEL: ${{ vars.HORIZON_AI_MODEL || 'google/gemini-2.5-flash-lite' }}
+          # Model id (ai.model = ${HORIZON_AI_MODEL}); taken from .env if present, otherwise from repo variable.
+          # This allows each repo to override the global model without modifying the config.
+          HORIZON_AI_MODEL: ${{ vars.HORIZON_AI_MODEL || env.HORIZON_AI_MODEL || 'google/gemini-2.5-flash-lite' }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
