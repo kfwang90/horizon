@@ -490,7 +490,7 @@ Requires an [Apify](https://apify.com) account. Set `APIFY_TOKEN` in your `.env`
 ```
 
 - `users` — Twitter screen names to monitor, without the `@` prefix
-- `keywords` — independent X search queries fetched via Apify scweet `source_mode: "search"`. These search beyond the configured `users`; they do not filter those users' timelines. Playwright mode logs a warning and skips keyword fetching.
+- `keywords` — independent X search queries fetched via Apify scweet `source_mode: "search"`. These search beyond the configured `users`; they do not filter those users' timelines. Keyword runs are started before the user-timeline run, in list order, so put prioritized topics first (e.g. GitHub-related queries such as `"GitHub"`). Playwright mode logs a warning and skips keyword fetching.
 - `fetch_limit` — in Apify mode, the requested tweet limit per actor run is `max(100, fetch_limit)`. All configured users share one profile run, and each non-empty keyword query starts a separate search run. This is not a total limit for the Twitter source.
 - `category` — optional tag for balanced digest grouping (applies to all tweets from this source)
 - `fetch_reply_text` — when `true`, fetch actual reply bodies for important tweets and append them under `--- Top Comments ---` so the AI can factor in community discussion. Disabled by default.

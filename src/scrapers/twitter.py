@@ -48,24 +48,8 @@ class TwitterScraper(BaseScraper):
         seen_ids: set[str] = set()
         max_items = max(100, self.config.fetch_limit)
 
-        if users:
-            logger.info(f"Fetching Twitter (Apify) for users: {users}")
-            profiles_payload = {
-                "source_mode": "profiles",
-                "profile_urls": users,
-                "search_sort": self.config.search_sort,
-                "max_items": max_items,
-            }
-            if self.config.per_profile_limit:
-                profiles_payload["per_profile_limit"] = self.config.per_profile_limit
-            await self._collect_from_payload(
-                token,
-                profiles_payload,
-                since,
-                items,
-                seen_ids,
-            )
-
+        # Keyword searches run first so prioritized queries (e.g. GitHub
+        # topics at the top of `keywords`) are searched before anything else.
         for keyword in keywords:
             logger.info(f"Fetching Twitter (Apify) search for keyword: {keyword}")
             try:
@@ -89,6 +73,24 @@ class TwitterScraper(BaseScraper):
                 )
             except Exception as exc:
                 logger.error(f"Keyword search failed for {keyword!r}: {exc}")
+
+        if users:
+            logger.info(f"Fetching Twitter (Apify) for users: {users}")
+            profiles_payload = {
+                "source_mode": "profiles",
+                "profile_urls": users,
+                "search_sort": self.config.search_sort,
+                "max_items": max_items,
+            }
+            if self.config.per_profile_limit:
+                profiles_payload["per_profile_limit"] = self.config.per_profile_limit
+            await self._collect_from_payload(
+                token,
+                profiles_payload,
+                since,
+                items,
+                seen_ids,
+            )
 
         logger.info(f"Fetched {len(items)} tweets via Apify.")
         return items

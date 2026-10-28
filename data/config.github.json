@@ -245,7 +245,9 @@
         "tom_doerr",
         "mervenoyann"
       ],
-      "keywords": [],
+      "keywords": [
+        "GitHub"
+      ],
       "fetch_limit": 100,
       "per_profile_limit": 3,
       "fetch_reply_text": false,
@@ -260,6 +262,10 @@
       "fetch_limit": 3,
       "min_views": 0,
       "max_items": 12,
+      "keywords": [
+        "GitHub"
+      ],
+      "search_fetch_limit": 10,
       "category": "social-hot",
       "profile": "social-hot",
       "channels": [

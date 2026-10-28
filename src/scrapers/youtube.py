@@ -1,8 +1,9 @@
 """YouTube scraper implementation.
 
-Lists the newest videos of configured channels and keeps the most viewed
-ones. Uses yt-dlp's *flat playlist* extraction, which needs no API key and no
-YouTube account.
+Lists the newest videos of configured channels and runs keyword searches
+(`ytsearch{N}:query` via yt-dlp), then keeps the most viewed results with
+GitHub-related ones boosted to the top. Uses yt-dlp's *flat playlist*
+extraction, which needs no API key and no YouTube account.
 
 Why flat extraction: full per-video extraction triggers YouTube's
 "Sign in to confirm you're not a bot" challenge from datacenter IPs, while
@@ -18,7 +19,13 @@ from typing import List, Optional
 import httpx
 
 from .base import BaseScraper
-from ..models import ContentItem, SourceType, YouTubeChannelConfig, YouTubeConfig
+from ..models import (
+    ContentItem,
+    ProfileRoute,
+    SourceType,
+    YouTubeChannelConfig,
+    YouTubeConfig,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -41,29 +48,33 @@ class YouTubeScraper(BaseScraper):
         self.cfg = config
 
     async def fetch(self, since: datetime) -> List[ContentItem]:
-        """Fetch the most viewed recent videos across configured channels.
+        """Fetch the most viewed recent videos across channels and searches.
 
         Args:
             since: Pipeline time window. Flat extractions carry no upload
                 date, so this is currently informational only.
 
         Returns:
-            List[ContentItem]: Fetched video items, most viewed first
+            List[ContentItem]: Fetched video items, GitHub-related ones first
+            and most viewed otherwise
         """
-        if not self.cfg.enabled or not self.cfg.channels:
+        if not self.cfg.enabled or (not self.cfg.channels and not self.cfg.keywords):
             return []
 
         enabled = [c for c in self.cfg.channels if c.enabled]
+        keywords = [k.strip() for k in self.cfg.keywords if k.strip()]
+        jobs = [(c.channel, self._fetch_channel(c)) for c in enabled]
+        jobs += [(k, self._fetch_keyword(k)) for k in keywords]
         results = await asyncio.gather(
-            *(self._fetch_channel(channel) for channel in enabled),
+            *(job[1] for job in jobs),
             return_exceptions=True,
         )
 
         items: List[ContentItem] = []
         seen: set[str] = set()
-        for channel, result in zip(enabled, results):
+        for label, result in zip((job[0] for job in jobs), results):
             if isinstance(result, BaseException):
-                logger.warning("YouTube channel %s failed: %s", channel.channel, result)
+                logger.warning("YouTube source %s failed: %s", label, result)
                 continue
             for item in result:
                 if item.id in seen:
@@ -78,23 +89,76 @@ class YouTubeScraper(BaseScraper):
                 if (item.metadata.get("view_count") or 0) >= self.cfg.min_views
             ]
 
-        items.sort(key=lambda item: item.metadata.get("view_count") or 0, reverse=True)
+        # Prioritize GitHub-related content: keyword searches often cover other
+        # topics as well, so anything mentioning GitHub stays at the top, and
+        # view count decides the order inside each group.
+        items.sort(
+            key=lambda item: (
+                not self._github_related(item),
+                -(item.metadata.get("view_count") or 0),
+            )
+        )
         if self.cfg.max_items:
             items = items[: self.cfg.max_items]
         return items
+
+    @staticmethod
+    def _github_related(item: ContentItem) -> bool:
+        """Whether title or content mentions GitHub."""
+        text = f"{item.title} {item.content}".lower()
+        return "github" in text
+
+    async def _fetch_keyword(self, keyword: str) -> List[ContentItem]:
+        """Run one keyword search via yt-dlp's `ytsearch{N}:query` extractor."""
+        limit = max(1, self.cfg.search_fetch_limit)
+        url = f"ytsearch{limit}:{keyword}"
+        entries = await asyncio.to_thread(self._list_videos, url, limit)
+        return self._entries_to_items(
+            entries,
+            author=keyword,
+            category=self.cfg.category,
+            profile=self.cfg.profile,
+            search_query=keyword,
+        )
 
     async def _fetch_channel(self, channel: YouTubeChannelConfig) -> List[ContentItem]:
         """List one channel's newest videos."""
         url = self._channel_url(channel.channel)
         limit = channel.fetch_limit or self.cfg.fetch_limit
         entries = await asyncio.to_thread(self._list_videos, url, limit)
+        return self._entries_to_items(
+            entries,
+            author=channel.channel,
+            channel_label=self._channel_label(channel.channel),
+            category=channel.category or self.cfg.category,
+            profile=channel.profile or self.cfg.profile,
+        )
 
+    def _entries_to_items(
+        self,
+        entries: List[dict],
+        author: str,
+        channel_label: Optional[str] = None,
+        category: Optional[str] = None,
+        profile: ProfileRoute = None,
+        search_query: Optional[str] = None,
+    ) -> List[ContentItem]:
+        """Turn yt-dlp flat entries into ContentItems."""
         items: List[ContentItem] = []
         for entry in entries:
             video_id = entry.get("id")
             title = (entry.get("title") or "").strip()
             if not video_id or not title:
                 continue
+            metadata: dict = {
+                "channel": channel_label or self._channel_label(author),
+                "video_id": str(video_id),
+                "view_count": entry.get("view_count"),
+                "duration": entry.get("duration"),
+                "category": category,
+            }
+            if search_query is not None:
+                metadata["search_query"] = search_query
             items.append(
                 ContentItem(
                     id=self._generate_id("youtube", "video", str(video_id)),
@@ -103,16 +167,10 @@ class YouTubeScraper(BaseScraper):
                     url=entry.get("url")
                     or f"https://www.youtube.com/watch?v={video_id}",
                     content=self._video_content(entry),
-                    author=channel.channel,
+                    author=author,
                     published_at=datetime.now(timezone.utc),
-                    profile=channel.profile or self.cfg.profile,
-                    metadata={
-                        "channel": self._channel_label(channel.channel),
-                        "video_id": str(video_id),
-                        "view_count": entry.get("view_count"),
-                        "duration": entry.get("duration"),
-                        "category": channel.category or self.cfg.category,
-                    },
+                    profile=profile,
+                    metadata=metadata,
                 )
             )
         return items

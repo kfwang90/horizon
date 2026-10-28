@@ -502,6 +502,42 @@ def test_playwright_keywords_only_skips_without_users():
     assert result == []
 
 
+def test_keyword_searches_run_before_profiles(monkeypatch):
+    """Keyword runs start first, in list order, so GitHub topics are prioritized."""
+    monkeypatch.setenv("APIFY_TOKEN", "test_token")
+    since = datetime.now(timezone.utc) - timedelta(hours=1)
+    started: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "/runs" in request.url.path and request.method == "POST":
+            body = json.loads(request.content)
+            if body.get("source_mode") == "search":
+                started.append(body["search_query"])
+            else:
+                started.append("profiles")
+            dataset = f"ds-{len(started)}"
+            return httpx.Response(
+                200, json=_run_resp(f"run-{len(started)}", dataset)
+            )
+        if "/actor-runs/" in request.url.path:
+            return httpx.Response(200, json=_status_resp())
+        if "/datasets/" in request.url.path:
+            return httpx.Response(200, json=[_tweet("tweet-1")])
+        raise AssertionError(f"Unexpected: {request.url}")
+
+    transport = httpx.MockTransport(handler)
+    client = httpx.AsyncClient(transport=transport)
+    result = asyncio.run(
+        TwitterScraper(
+            _make_config(users=["karpathy"], keywords=["GitHub", "LLM"]), client
+        ).fetch(since)
+    )
+    asyncio.run(client.aclose())
+
+    assert started == ["GitHub", "LLM", "profiles"]
+    assert result  # keyword + profile tweets were collected
+
+
 # ---------------------------------------------------------------------------
 # Reply fetch tests
 # ---------------------------------------------------------------------------

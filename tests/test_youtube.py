@@ -146,3 +146,46 @@ def test_channel_failure_does_not_break_others(monkeypatch) -> None:
     items = _fetch(scraper)
 
     assert len(items) == 2
+
+
+def test_keyword_search_uses_ytsearch_and_metadata(monkeypatch) -> None:
+    captured: dict = {}
+
+    def fake_list_videos(url: str, limit: int) -> list[dict]:
+        captured["url"] = url
+        captured["limit"] = limit
+        return _entries()
+
+    monkeypatch.setattr(YouTubeScraper, "_list_videos", staticmethod(fake_list_videos))
+    config = YouTubeConfig(keywords=["GitHub"], search_fetch_limit=10)
+    scraper = YouTubeScraper(config)
+
+    items = _fetch(scraper)
+
+    assert captured["url"] == "ytsearch10:GitHub"
+    assert captured["limit"] == 10
+    assert len(items) == 2
+    assert items[0].author == "GitHub"
+    assert items[0].metadata["search_query"] == "GitHub"
+
+
+def test_github_related_items_are_boosted(monkeypatch) -> None:
+    entries = [
+        {"id": "low", "title": "Random video", "view_count": 90_000},
+        {"id": "high", "title": "New GitHub tool released", "view_count": 500},
+    ]
+
+    monkeypatch.setattr(
+        YouTubeScraper,
+        "_list_videos",
+        staticmethod(lambda url, limit: entries),
+    )
+    config = YouTubeConfig(channels=[YouTubeChannelConfig(channel="@x")])
+    scraper = YouTubeScraper(config)
+
+    items = _fetch(scraper)
+
+    assert [item.id for item in items] == [
+        "youtube:video:high",
+        "youtube:video:low",
+    ]

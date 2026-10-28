@@ -221,7 +221,7 @@ Flow:
 
 Profile timelines use `source_mode: "profiles"`. Keyword discovery and reply expansion reuse `source_mode: "search"` with `search_query`.
 
-When users are configured, a single profile run fetches their timelines together. Each non-empty keyword query starts a separate search run, independently of the configured users. Either path can be used on its own. Results are filtered to the current time window and merged with deduplication by tweet ID across all runs.
+When users are configured, a single profile run fetches their timelines together. Each non-empty keyword query starts a separate search run. **Keyword runs are started before the profile run**, in the order listed: put the topics you want prioritized first (for example GitHub-related queries such as `"GitHub"`). Either path can be used on its own. Results are filtered to the current time window and merged with deduplication by tweet ID across all runs.
 
 **Config** (`sources.twitter`):
 
@@ -241,7 +241,7 @@ When users are configured, a single profile run fetches their timelines together
 ```
 
 - `users` — Twitter screen names to monitor, without the `@` prefix
-- `keywords` — independent Apify search queries (`source_mode: "search"`), not filters on the configured users' timelines. Not supported in Playwright mode.
+- `keywords` — independent Apify search queries (`source_mode: "search"`), not filters on the configured users' timelines. Runs before the profile timeline run, in list order, so earlier entries are prioritized (e.g. GitHub topics). Not supported in Playwright mode.
 - `fetch_limit` — in Apify mode, each profile or keyword-search actor run requests up to `max(100, fetch_limit)` tweets. This is not a combined limit: the example above starts three discovery runs with a limit of 100 tweets each, before time filtering and deduplication. Each keyword adds an actor run and associated Apify usage.
 - `category` — optional tag for balanced digest grouping (applies to all tweets from this source)
 - `fetch_reply_text` — when `true`, a second Apify run fetches reply bodies for each important tweet and appends them under `--- Top Comments ---` for AI analysis
@@ -254,3 +254,41 @@ When users are configured, a single profile run fetches their timelines together
 **Authentication**: Set `APIFY_TOKEN` in your `.env`. Get a token at [console.apify.com](https://console.apify.com/account/integrations).
 
 **Extracted data**: tweet text, URL, author, publish time, likes, retweets, replies, views, category, and (optionally) reply-thread text appended under `--- Top Comments ---`.
+
+## YouTube
+
+**File**: `src/scrapers/youtube.py`
+
+Uses yt-dlp's *flat playlist* extraction, which needs no API key and no YouTube account. Two discovery modes are combined:
+
+1. **Channels** — each configured channel's newest videos are listed (`/videos` playlist).
+2. **Keyword search** — each non-empty `keyword` runs one `ytsearch{search_fetch_limit}:{keyword}` search, e.g. GitHub-related queries such as `"GitHub"`.
+
+Results from all channels and searches are merged with deduplication by video ID, filtered by `min_views`, and sorted: **GitHub-related videos (title or description mentioning GitHub) come first, most viewed otherwise**. Finally `max_items` keeps the top entries.
+
+Flat extraction carries no upload date, so items are dated at fetch time. Keyword searches use the same flat extraction as channel listings and are likewise framed as one cheap request per keyword.
+
+**Config** (`sources.youtube`):
+
+```json
+{
+  "enabled": true,
+  "keywords": ["GitHub"],
+  "search_fetch_limit": 10,
+  "fetch_limit": 3,
+  "min_views": 0,
+  "max_items": 12,
+  "channels": [
+    {"channel": "@TwoMinutePapers", "enabled": true}
+  ]
+}
+```
+
+- `keywords` — yt-dlp keyword queries, in priority order (put the topics you want first, e.g. GitHub-related queries); requires the optional `yt-dlp` dependency (`uv sync --extra youtube`)
+- `search_fetch_limit` — newest N search results inspected per keyword (default: 10)
+- `fetch_limit` — default newest N videos listed per channel
+- `min_views` — drop videos with fewer views than this
+- `max_items` — cap on the combined channel + search result count
+- `channels` — list of `@handle`, channel-ID or URL entries to monitor
+
+**Extracted data**: video title, URL, channel, views, duration, description, category, and the originating `search_query` for keyword results.

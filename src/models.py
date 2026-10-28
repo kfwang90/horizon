@@ -349,6 +349,9 @@ class TwitterConfig(BaseModel):
     enabled: bool = True
     mode: str = "apify"  # "apify" or "playwright"
     users: List[str] = Field(default_factory=list)
+    # Search queries (Apify `source_mode: "search"`). Runs start before the
+    # user-timeline run, in list order — put prioritized topics first, e.g.
+    # GitHub-related queries such as "GitHub".
     keywords: List[str] = Field(default_factory=list)
     fetch_limit: int = 10
     category: Optional[str] = None
@@ -391,6 +394,13 @@ class YouTubeConfig(BaseModel):
 
     enabled: bool = True
     channels: List[YouTubeChannelConfig] = Field(default_factory=list)
+    # Keyword searches via yt-dlp's `ytsearch{N}:query` extraction. Put
+    # prioritized topics first (e.g. GitHub-related queries); keyword results
+    # that mention GitHub are additionally boosted above other results.
+    keywords: List[str] = Field(default_factory=list)
+    # Newest N search results inspected per keyword (search results have no
+    # upload date, so like channel listings they are dated at fetch time).
+    search_fetch_limit: int = 10
     fetch_limit: int = 3  # default newest N per channel
     min_views: int = 0  # drop videos with fewer views than this
     max_items: Optional[int] = None
