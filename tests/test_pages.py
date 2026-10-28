@@ -102,7 +102,8 @@ def test_recent_items_follow_group_order_and_language_titles():
         "item-ai-news-1",
     ]
     assert recent[0]["score"] == 8.0
-    assert set(recent[0]) == {"title", "anchor", "section", "score"}
+    assert recent[0]["key"] == "github:item-2"
+    assert set(recent[0]) == {"key", "title", "anchor", "section", "score"}
 
 
 def test_recent_items_use_requested_language():

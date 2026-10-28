@@ -16,9 +16,14 @@ def recent_items(view: DailySummaryView) -> List[Dict[str, Any]]:
 
     Only what a list entry needs is kept: the display title, the anchor that
     the item renders under inside the day's page, its section and its score.
+
+    ``key`` carries the stable source id (e.g. ``github:repo:owner/name``).
+    The index page deduplicates repeated days by it, because AI-generated
+    display titles can drift while the underlying item stays the same.
     """
     return [
         {
+            "key": view_item.item.id,
             "title": view_item.title,
             "anchor": view_item.anchor_id,
             "section": group.name,
