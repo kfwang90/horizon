@@ -16,8 +16,6 @@
 
 📡 构建你专属的 AI 新闻雷达，生成中英双语日报。 | Your own AI-powered news radar.
 
-[📖 在线演示](https://thysrael.github.io/Horizon/) · [📋 配置指南](https://thys2ra.github.io/Horizon/configuration) · [💬 QQ 群](#交流群)
-
 </div>
 
 ## 功能特性
@@ -34,47 +32,6 @@
 **Profile 定义处理规则，运行配置掌握阅读偏好。** 每条内容路由到一个 Profile，完成分析、筛选和去重后，再为入选内容生成区块，按 Profile 分组渲染成日报。
 
 通过 CLI 运行完整流程，也可通过 [MCP](src/mcp/README.md) 让 AI 助手调用采集、分析和生成等阶段。
-
-## 快速开始
-
-### 1. 安装
-
-```bash
-git clone https://github.com/Thysrael/Horizon.git
-cd horizon
-
-# 使用 uv 安装（推荐）
-uv sync
-
-# 需要测试/开发依赖时
-uv sync --extra dev
-
-# 或使用 pip
-pip install -e .
-```
-
-### 2. 配置
-
-**方式 A：交互式向导（推荐）**
-
-```bash
-uv run horizon-wizard
-```
-
-向导会询问你的兴趣（如"LLM 推理"、"嵌入式"、"web 安全"），自动推荐并生成 `data/config.json`，还可选让 AI 补充推荐小众源。若你想分享信息源，请前往 [horizon1123.top](https://horizon1123.top/)。CLI 选项见[交互式向导](docs/configuration.md#interactive-wizard)。
-
-**方式 B：手动配置**
-
-```bash
-cp .env.example .env          # 添加 API 密钥
-cp data/config.example.json data/config.json  # 自定义信息源
-```
-
-### 3. 运行
-
-```bash
-uv run horizon
-```
 
 ## 支持的信息源
 
@@ -96,7 +53,7 @@ Horizon 支持以下信息源（各信息源均需配置 `profile`，用于内�
 
 每日新闻通过以下方式发布：
 
-1. **GitHub Pages**：访问 [Horizon 网站](https://thysrael.github.io/Horizon/) 获取最新日报
+1. **GitHub Pages**：访问 [Horizon 网站](https://kfwang90.github.io/horizon/) 获取最新日报
 2. **邮件推送**：订阅邮件接收每日摘要
 3. **Webhook 通知**：通过 Webhook 接口获取新闻数据
 4. **微信推送**：关注官方微信获取每日新闻
