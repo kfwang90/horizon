@@ -52,6 +52,38 @@ jobs:
             echo "HORIZON_WEBHOOK_URL not configured; webhook notifications will be skipped."
           fi
 
+      # ------------------------------------------------------------------
+      # Cross-run dedup: the seen registry (ids of items published in recent
+      # digests) is stored in data/seen-items.json and travels through the
+      # deploy repo's .horizon-archive, like the digest posts. Without this
+      # step a fresh CI runner would publish the same repeats every day.
+      # ------------------------------------------------------------------
+      - name: Restore the seen-items dedup registry
+        env:
+          PAGES_DEPLOY_TOKEN: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+          TARGET_REPO: ${{ vars.PAGES_REPO || format('{0}/{0}.github.io', github.repository_owner) }}
+        run: |
+          set -euo pipefail
+          SITE_DIR="${{ runner.temp }}/horizon-site"
+          if [ -z "${PAGES_DEPLOY_TOKEN}" ]; then
+            echo "::warning::PAGES_DEPLOY_TOKEN is not set; dedup starts with an empty registry."
+            exit 0
+          fi
+          rm -rf "$SITE_DIR"
+          if ! git clone \
+            "https://x-access-token:${PAGES_DEPLOY_TOKEN}@github.com/${TARGET_REPO}.git" \
+            "$SITE_DIR"; then
+            echo "::warning::could not clone ${TARGET_REPO}; dedup starts with an empty registry."
+            exit 0
+          fi
+          if [ -f "$SITE_DIR/.horizon-archive/seen-items.json" ]; then
+            mkdir -p data
+            cp -f "$SITE_DIR/.horizon-archive/seen-items.json" data/seen-items.json
+            echo "Restored seen-items registry: $(wc -l < data/seen-items.json) lines."
+          else
+            echo "No seen-items registry yet; dedup starts with an empty registry."
+          fi
+
       - name: Run Horizon
         env:
           # data/config.github.json uses ai.api_key_env = OPENROUTER_API_KEY
@@ -74,7 +106,6 @@ jobs:
         # --extra youtube matters: a bare `uv run` re-syncs the venv without
         # extras, which would uninstall yt-dlp again.
         run: uv run --extra youtube horizon --hours 24
-
       - name: Set current date as environment variable
         run: echo "DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
@@ -169,6 +200,13 @@ jobs:
           mkdir -p "$SITE_DIR/.horizon-archive/posts"
           find docs/_posts -maxdepth 1 -name '*.md' \
             -exec cp -f {} "$SITE_DIR/.horizon-archive/posts/" \;
+
+          # Persist the dedup registry for the next run (id -> last seen).
+          if [ -f data/seen-items.json ]; then
+            cp -f data/seen-items.json "$SITE_DIR/.horizon-archive/seen-items.json"
+          else
+            echo "::warning::run produced no data/seen-items.json; dedup registry unavailable."
+          fi
 
           cd "$SITE_DIR"
           git config user.name  "github-actions[bot]"

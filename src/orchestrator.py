@@ -3,7 +3,7 @@
 import asyncio
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, List, Literal, Optional
 from urllib.parse import unquote_plus, urlsplit
@@ -15,6 +15,7 @@ from .models import Config, ContentItem
 from .storage.manager import StorageManager, safe_output_path
 from .services.email import EmailManager
 from .services.pages import post_front_matter, recent_items
+from .services.seen_registry import SeenRegistry
 from .services.webhook import WebhookNotifier
 from .services.wechat import WeChatNotifier
 from .scrapers.github import GitHubScraper
@@ -276,8 +277,25 @@ class HorizonOrchestrator:
                     f"→ {len(merged_items)} unique items\n"
                 )
 
+            # 3b. Skip items already reported in the last N days (cross-run
+            # dedup via the seen registry). Runs before AI analysis so repeats
+            # neither waste AI tokens nor claim digest slots.
+            fresh_items, repeats = self._filter_previously_reported(merged_items)
+            if repeats:
+                self.console.print(
+                    f"{self.icons['merge']} Skipped {len(repeats)} repeats from "
+                    f"the last {self.config.collection.dedup_window_days} days "
+                    f"→ {len(fresh_items)} new items\n"
+                )
+            if not fresh_items:
+                self.console.print(
+                    "[yellow]Everything was already reported recently. "
+                    "No digest for today.[/yellow]\n"
+                )
+                return
+
             # 4. Analyze with AI
-            analyzed_items = await self.analyze_items(merged_items)
+            analyzed_items = await self.analyze_items(fresh_items)
             self.console.print(
                 f"{self.icons['ai']} Analyzed {len(analyzed_items)} items with AI\n"
             )
@@ -375,6 +393,20 @@ class HorizonOrchestrator:
                     )
                 if self.wechat_notifier:
                     await self.wechat_notifier.send_daily_summary(summary, lang)
+
+            # 8. Mark the digest's items as reported so later runs (including
+            # CI runs on fresh runners, via the archive) skip these repeats.
+            try:
+                count = self._record_reported(important_items, today)
+                self.console.print(
+                    f"{self.icons['save']} Dedup registry updated: "
+                    f"{count} item id(s) tracked\n"
+                )
+            except Exception as e:
+                self.console.print(
+                    f"[yellow]{self.icons['warning']} Failed to update the "
+                    f"dedup registry: {e}[/yellow]\n"
+                )
 
             self.console.print(
                 f"[bold green]{self.icons['success']} "
@@ -588,6 +620,38 @@ class HorizonOrchestrator:
         if meta.get("domain"):
             return meta["domain"]
         return item.author or "unknown"
+
+    def _filter_previously_reported(
+        self, items: List[ContentItem]
+    ) -> tuple[List[ContentItem], List[ContentItem]]:
+        """Drop items present in the seen registry inside the dedup window.
+
+        Args:
+            items: Merged items of the current run
+
+        Returns:
+            Tuple of (fresh items, repeats skipped by the registry)
+        """
+        collection_cfg = self.config.collection
+        if not collection_cfg.dedup_enabled or collection_cfg.dedup_window_days <= 0:
+            return items, []
+        registry = SeenRegistry(self._registry_path())
+        return registry.filter_out_seen(items, collection_cfg.dedup_window_days)
+
+    def _record_reported(self, items: List[ContentItem], today: str) -> int:
+        """Mark a finished digest's items as reported in the seen registry."""
+        registry = SeenRegistry(self._registry_path())
+        return registry.record(
+            items,
+            today=date.fromisoformat(today),
+            prune_days=self.config.collection.dedup_window_days,
+        )
+
+    def _registry_path(self) -> Path:
+        """Location of the seen registry; falls back to ./data when the
+        storage manager has no data_dir (e.g. test doubles)."""
+        data_dir = getattr(self.storage, "data_dir", None)
+        return Path(data_dir) / "seen-items.json" if data_dir else Path("data") / "seen-items.json"
 
     def merge_cross_source_duplicates(self, items: List[ContentItem]) -> List[ContentItem]:
         """Merge items that point to the same URL from different sources.

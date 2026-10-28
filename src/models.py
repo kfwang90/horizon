@@ -657,6 +657,10 @@ class CollectionConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     time_window_hours: int = 24
+    # Cross-run dedup: skip items already reported within the look-back window
+    # (via the seen registry at data/seen-items.json), counted in days.
+    dedup_enabled: bool = True
+    dedup_window_days: int = 7
 
 
 class DigestConfig(BaseModel):

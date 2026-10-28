@@ -205,7 +205,9 @@
     }
   },
   "collection": {
-    "time_window_hours": 24
+    "time_window_hours": 24,
+    "dedup_enabled": true,
+    "dedup_window_days": 7
   },
   "digest": {
     "max_items": null,
