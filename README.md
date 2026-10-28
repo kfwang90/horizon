@@ -16,13 +16,7 @@
 
 📡 构建你专属的 AI 新闻雷达，生成中英双语日报。 | Your own AI-powered news radar.
 
-[📖 在线演示](https://thysrael.github.io/Horizon/) · [📋 配置指南](https://thysrael.github.io/Horizon/configuration) · [💬 QQ 群](#交流群) · [贡献指南](CONTRIBUTING.md)
-
----
-
-🎨 **原作者：** [Thysrael](https://github.com/Thysrael)
-
-欢迎贡献和改进！
+[📖 在线演示](https://thysrael.github.io/Horizon/) · [📋 配置指南](https://thysrael.github.io/Horizon/configuration) · [💬 QQ 群](#交流群)
 
 </div>
 
@@ -116,20 +110,6 @@ Horizon 支持以下信息源（各信息源均需配置 `profile`，用于内�
 - [Profile 指南](docs/profiles.md) - 内容处理规则配置
 - [MCP 工具](src/mcp/README.md) - AI 助手集成指南
 - [架构图](docs/assets/architecture.svg) - 系统架构说明
-
-## 贡献
-
-**[GitHub 仓库](https://github.com/Thysrael/Horizon)** | 欢迎贡献代码、Bug 修复和功能改进。
-
-### 分享信息源
-
-想把有价值的信息源分享给 Horizon 社区？请直接访问 [horizon1123.top](https://horizon1123.top/) 提交。
-
-### 参与开发
-
-1. 提交 Issue - 报告 Bug 或提出功能建议
-2. Fork 仓库并创建 Pull Request
-3. 参与代码评审和文档更新
 
 ## 鸣谢
 
