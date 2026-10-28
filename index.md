@@ -9,7 +9,7 @@ title: Horizon 每日速递
 
 <ul>
   {% assign zh_posts = site.posts | where: "lang", "zh" %}
-  {% for post in zh_posts limit:20 %}
+  {% for post in zh_posts limit:7 %}
     <li>
       <a href="{{ post.url | relative_url }}">{{ post.date | date: "%Y-%m-%d" }}</a>
     </li>
@@ -49,7 +49,7 @@ title: Horizon 每日速递
 
 <ul>
   {% assign en_posts = site.posts | where: "lang", "en" %}
-  {% for post in en_posts limit:20 %}
+  {% for post in en_posts limit:7 %}
     <li>
       <a href="{{ post.url | relative_url }}">{{ post.date | date: "%Y-%m-%d" }}</a>
     </li>
