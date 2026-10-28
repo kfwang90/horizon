@@ -586,18 +586,30 @@ configuration. Each profile can use a different `threshold`; set it to `null` or
 omit that profile's settings to disable score filtering. See [Processing
 Profiles](profiles.md#filtering) and [Scoring](scoring.md).
 
-The runtime `collection` section controls the fetch window and contains only
-`time_window_hours`:
+The runtime `collection` section controls the fetch window and cross-run
+deduplication:
 
 ```json
 {
   "collection": {
-    "time_window_hours": 24
+    "time_window_hours": 24,
+    "dedup_enabled": true,
+    "dedup_window_days": 7
   }
 }
 ```
 
 - `time_window_hours`: Fetch content from last N hours
+- `dedup_enabled` (default: `true`): skip items whose stable id was published
+  in a recent digest. Content that keeps staying hot — a repo on the trending
+  list, a popular video — disappears from the daily digests and the index
+  page's 「近期消息」 until its look-back window expires. Event-style entries
+  (pushes, releases) have per-event ids and are never affected.
+- `dedup_window_days` (default: `7`): how many days a reported item id stays
+  blocked. The registry is `data/seen-items.json`; on CI it is restored from
+  and persisted back to the deploy repo's `.horizon-archive/`, so repeats are
+  skipped even on fresh runners. Only the items that actually made it into a
+  digest are recorded — fetched-but-unselected items stay eligible.
 
 The runtime `digest` section controls final section order and optional balanced
 digest limits:
